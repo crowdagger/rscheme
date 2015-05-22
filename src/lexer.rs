@@ -39,7 +39,37 @@ fn read_number (s: &str) -> Result {
 }
 
 fn read_string (s: &str) -> Result {
-    Ok(Token::String(s.to_string()))
+    let cs = s.chars();
+    let mut s = String::new();
+    let mut prev_escape = false;
+    let mut quotes = 0;
+    
+    for c in cs  {
+        match c {
+            '"' => if prev_escape {
+                prev_escape = false;
+                s.push('"');
+            } else {
+                quotes += 1;
+                prev_escape = false;
+                if quotes >= 2 {
+                    break;
+                }
+            },
+            '\\' => if prev_escape {
+                prev_escape = false;
+                s.push ('\\');
+            } else {
+                prev_escape = true;
+            },
+            v => if prev_escape {
+                return Err("Parse error in string: invalid escape character");
+            } else {
+                s.push(v);
+            }
+        }
+    }
+    Ok(Token::String(s))
 }
 
 fn read_ident (s: &str) -> Result {
@@ -58,9 +88,7 @@ fn read_single_token (s: &str) -> Result {
     }
 }
         
-        
-
-pub fn tokenize(s: &str) -> Vec<Result> {
+pub fn tokenize(s: &str) -> Option<Vec<Token>> {
     let s = s.replace("(", " ( ")
         .replace(")", " ) ")
         .replace("'", "' ");
@@ -68,8 +96,21 @@ pub fn tokenize(s: &str) -> Vec<Result> {
         .filter(|s:&&str| if *s=="" {false} else {true})
         .collect();
     println!("{:?}", x);
-    let res: Vec<Result> = x.iter()
-        .map(|s:&&str| read_single_token(*s))
-        .collect();
-    res
+    let mut res: Vec<Token> = vec! ();
+    let mut err = false;
+    for s in x.iter () {
+        let r = read_single_token (s);
+        match r {
+            Err(s) => {
+                println! ("{}", s);
+                err = true;
+            },
+            Ok(t) => res.push (t)
+        }
+    }
+    if err {
+        None
+    } else {
+        Some(res)
+    }
 }
