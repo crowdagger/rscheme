@@ -1,4 +1,4 @@
 [package]
-name = "rustscheme"
+name = "rscheme"
 version = "0.1.0"
 authors = ["Elisabeth Henry <liz.henry@ouvaton.org>"]

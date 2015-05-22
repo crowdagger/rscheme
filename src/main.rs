@@ -1,3 +1,7 @@
+mod lexer;
+
 fn main() {
-    println!("Hello, world!");
+    let s:&str = "(car    (cdr   (cons   1   (cons 2 
+()))))";
+    println!("{:?}", lexer::tokenize(s));
 }
