@@ -11,7 +11,9 @@ const RESERVED_IDENTS:&'static[&'static str] = &[
     "+",
     "-",
     "*",
-    "/"];
+    "/",
+    "car",
+    "cdr"];
 
 fn is_reserved_ident (s: &str) -> bool {
     for i in RESERVED_IDENTS {
@@ -88,6 +90,21 @@ impl Context {
                     _ => panic!("ill-formed if"),
                 },
             _ => panic!("ill-formed if")
+        }
+    }
+
+    fn pre_eval_1(&self, e:Rc<Expr>) -> Context {
+        match *e {
+            Expr::Cons (ref e1, ref r) =>
+                match **r {
+                    Expr::Nil => {
+                        let mut c = self.clone();
+                        c.expr = e1.clone();
+                        c.eval()
+                    },
+                    _ => panic!("Too many args")
+                },
+            _ => panic!("Arg is not a cons")
         }
     }
 
@@ -238,7 +255,31 @@ impl Context {
             _ => panic!("def must take an ident as first parameter")
         }
     }
-    
+
+    fn eval_car (&self, e:Rc<Expr>) -> Context {
+        let mut c = self.pre_eval_1(e);
+        let e = c.expr.clone();
+        match *e {
+            Expr::Cons (ref car, _) => {
+                c.expr = car.clone();
+                c
+            }
+            _ => panic! ("Error: car must take a list")
+        }
+    }
+
+    fn eval_cdr (&self, e:Rc<Expr>) -> Context {
+        let mut c = self.pre_eval_1(e);
+        let e = c.expr.clone();
+        match *e {
+            Expr::Cons (_, ref cdr) => {
+                c.expr = cdr.clone();
+                c
+            }
+            _ => panic! ("Error: cdr must take a list")
+        }
+    }
+        
     fn eval_cons_ident(&self, ident:String, e2:Rc<Expr>) -> Context {
         match ident.as_ref() {
             "if" => self.eval_if(e2),
@@ -247,6 +288,8 @@ impl Context {
             "/" => self.eval_div(e2),
             "*" => self.eval_mul(e2),
             "def" => self.eval_def(e2),
+            "car" => self.eval_car(e2),
+            "cdr" => self.eval_cdr(e2),
             "cons" => panic!("Cons not implemented"),
             "lambda" => panic!("lambda not implemented"),
             _ => panic!("custom call not implemented")

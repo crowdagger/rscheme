@@ -31,7 +31,8 @@ fn main() {
 //    let s:&str = "(1 2 (3.0 \"toto\" ) 4)";
     //    let s = "(1 2)";
     //    let s = "(if titi 2 3)";
-    let s = "(def x (if titi (- titi (+ 2 (* 4 (/ 2.5 5)))) (+ 3 5 6)))";
+    //    let s = "(def x (if titi (- titi (+ 2 (* 4 (/ 2.5 5)))) (+ 3 5 6)))";
+    let s = "(cdr (cdr '(1 2 3)))";
     let o = lexer::tokenize (s);
     match o {
         None => println! ("First pass failed"),
