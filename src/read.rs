@@ -6,6 +6,8 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub enum Expr {
     Nil,
+    Lambda(Rc<Expr>, Rc<Expr>),
+    Macro(Rc<Expr>, Rc<Expr>),
     Integer(i64),
     Float(f64),
     Ident(String),
