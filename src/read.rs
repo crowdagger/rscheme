@@ -20,7 +20,8 @@ pub enum Expr {
 
 fn read_quote<'a> (xs:&'a [Token])->(Expr, &'a [Token]) {
     if xs.len() == 0 {
-        panic! ("Error parsing quote: not enough arguments");
+        println! ("Error parsing quote: not enough arguments");
+        (Expr::Nil, &[])
     } else {
         let (e,r) = read_expr(&xs[0], &xs[1..]);
         (Expr::Quote(Rc::new(e)), r)
@@ -29,7 +30,8 @@ fn read_quote<'a> (xs:&'a [Token])->(Expr, &'a [Token]) {
 
 fn read_paren<'a> (xs:&'a [Token])->(Expr,&'a[Token]) {
     if xs.len() == 0 {
-        panic! ("Error parsing '(: closing parenthesis not found");
+        println! ("Error parsing '(: closing parenthesis not found");
+        (Expr::Nil,&[])
     } else {
         let x:&Token=&xs[0];
         let xs = &xs[1..];
@@ -53,7 +55,10 @@ fn read_expr<'a> (x:&Token, xs:&'a [Token])->(Expr,&'a [Token]) {
         Token::String(ref x) => (Expr::String(x.clone()), xs),
         Token::Quote => read_quote(xs),
         Token::OpeningParen => read_paren(xs),
-        Token::ClosingParen => panic! ("Parse error: closing parenthesis doesn't match opening one")
+        Token::ClosingParen => {
+            println!("Parse error: closing parenthesis doesn't match opening one");
+            (Expr::Nil, &[])
+        }
     }
 }
 

@@ -16,6 +16,14 @@ const RESERVED_IDENTS:&'static[&'static str] = &[
     "car",
     "cdr"];
 
+/// Sets an expr to nil, plus displays an error message
+fn error_expr (s:&str) -> Expr
+{
+    println!("{}", s);
+    Expr::Nil
+}
+    
+
 fn is_reserved_ident (s: &str) -> bool {
     for i in RESERVED_IDENTS {
         if s == *i {
@@ -75,17 +83,35 @@ fn merge_envs (x:HashMap<String,Rc<Expr>>, y:HashMap<String,Rc<Expr>>) -> HashMa
 #[derive(Clone,Debug)]
 pub struct Context {
     pub expr: Rc<Expr>,
-    env: HashMap<String,Rc<Expr>>
+    env: HashMap<String,Rc<Expr>>,
+    error: bool
 }
 
 impl Context {
     pub fn new() -> Context {
         Context {
             expr: Rc::new(Expr::Nil),
-            env: HashMap::new()
+            env: HashMap::new(),
+            error: false
         }
     }
 
+    fn error(&self) -> Context {
+        let mut c = self.clone();
+        c.expr = Rc::new(Expr::Nil);
+        c.error = true;
+        c
+    }
+
+    fn error_str(&self, s:&str)-> Context {
+        println!("{}", s);
+        self.error()
+    }
+
+    fn has_error(&self) -> bool {
+        self.error
+    }
+    
     pub fn set_expr(&self, expr: Expr) -> Context {
         let mut c = self.clone();
         c.expr = Rc::new(expr);
@@ -94,14 +120,18 @@ impl Context {
 
     pub fn lookup(&self, ident: &String) -> Rc<Expr> {
         match self.env.get (ident) {
-            None => panic! ("Lookup: variable not found in environment"),
+            None => {
+                println!("Lookup: variable {} not found in environment", ident);
+                Rc::new(Expr::Nil)
+            },
             Some(x)  => (*x).clone()
         }
     }
 
     pub fn add_env(&self, ident:String, expr:Rc<Expr>) -> Context {
         if is_reserved_ident (&ident) {
-            panic!("Use of reserved keyword");
+            println!("Keyword {} is reserved", ident);
+            self.error()
         } else {
             let mut context = self.clone();
             context.env.insert(ident, expr);
@@ -136,13 +166,13 @@ impl Context {
                             Expr::Cons (ref f, ref r) =>
                                 match **r {
                                     Expr::Nil => self.eval_if_form (p.clone(), t.clone(), f.clone()),
-                                    _ => panic!("ill-formed if")
+                                    _ => self.error_str("ill-formed if")
                                 },
-                            _ => panic! ("ill-formed if")
+                            _ => self.error_str ("ill-formed if")
                         },
-                    _ => panic!("ill-formed if"),
+                    _ => self.error_str ("ill-formed if"),
                 },
-            _ => panic!("ill-formed if")
+            _ => self.error_str ("ill-formed if")
         }
     }
 
@@ -155,9 +185,9 @@ impl Context {
                         c.expr = e1.clone();
                         c.eval()
                     },
-                    _ => panic!("Too many args")
+                    _ => self.error_str ("Too many args")
                 },
-            _ => panic!("Arg is not a cons")
+            _ => self.error_str ("Arg is not a cons")
         }
     }
 
@@ -177,12 +207,12 @@ impl Context {
                                 let r2 = c.expr.clone();
                                 (r1, r2, c.clone())
                             },
-                            _ => panic!("ill-formed operator: too many args")
+                            _ => (Rc::new(Expr::Nil), Rc::new(Expr::Nil), self.error_str("ill-formed operator: too many args"))
                         }
                     },
-                    _ => panic!("ill-formed operator"),
+                    _ => (Rc::new(Expr::Nil), Rc::new(Expr::Nil), self.error_str("ill-formed operator: too many args")),
                 },
-            _ => panic!("ill-formed operator")
+            _ => (Rc::new(Expr::Nil), Rc::new(Expr::Nil), self.error_str("ill-formed operator: too many args"))
         }        
     }
 
@@ -203,16 +233,16 @@ impl Context {
             Expr::Integer(x1) => match *r2 {
                 Expr::Integer(x2) => Expr::Integer(x1 + x2),
                 Expr::Float(x2) => Expr::Float((x1 as f64) + x2),
-                _ => panic!("Eval error in +: invalid types for arguments")
+                _ => return self.error_str("Eval error in +: invalid types for arguments")
             },
             Expr::Float(x1) => match *r2 {
                 Expr::Integer(x2) => Expr::Float(x1 + (x2 as f64)),
                 Expr::Float(x2) => Expr::Float(x1 + x2),
-                _ => panic!("Eval error in +: invalid types for arguments")
+                _ => return self.error_str("Eval error in +: invalid types for arguments")
             },
-            _ => panic!("Eval error in +: invalid types for arguments")
+            _ => return self.error_str ("Eval error in +: invalid types for arguments")
         };
-
+ 
         let mut new_c = c.clone();
         new_c.expr = Rc::new(expr);
         new_c
@@ -226,14 +256,14 @@ impl Context {
             Expr::Integer(x1) => match *r2 {
                 Expr::Integer(x2) => Expr::Integer(x1 - x2),
                 Expr::Float(x2) => Expr::Float((x1 as f64) - x2),
-                _ => panic!("Eval error in +: invalid types for arguments")
+                _ => return self.error_str("Eval error in +: invalid types for arguments")
             },
             Expr::Float(x1) => match *r2 {
                 Expr::Integer(x2) => Expr::Float(x1 - (x2 as f64)),
                 Expr::Float(x2) => Expr::Float(x1 - x2),
-                _ => panic!("Eval error in +: invalid types for arguments")
+                _ => return self.error_str("Eval error in +: invalid types for arguments")
             },
-            _ => panic!("Eval error in +: invalid types for arguments")
+            _ => return self.error_str("Eval error in +: invalid types for arguments")
         };
 
         let mut new_c = c.clone();
@@ -248,14 +278,14 @@ impl Context {
             Expr::Integer(x1) => match *r2 {
                 Expr::Integer(x2) => Expr::Integer(x1 * x2),
                 Expr::Float(x2) => Expr::Float((x1 as f64) * x2),
-                _ => panic!("Eval error in +: invalid types for arguments")
+                _ => return self.error_str("Eval error in +: invalid types for arguments")
             },
             Expr::Float(x1) => match *r2 {
                 Expr::Integer(x2) => Expr::Float(x1 * (x2 as f64)),
                 Expr::Float(x2) => Expr::Float(x1 * x2),
-                _ => panic!("Eval error in +: invalid types for arguments")
+                _ => return self.error_str("Eval error in +: invalid types for arguments")
             },
-            _ => panic!("Eval error in +: invalid types for arguments")
+            _ => return self.error_str("Eval error in +: invalid types for arguments")
         };
 
         let mut new_c = c.clone();
@@ -270,14 +300,14 @@ impl Context {
             Expr::Integer(x1) => match *r2 {
                 Expr::Integer(x2) => Expr::Integer(x1 / x2),
                 Expr::Float(x2) => Expr::Float((x1 as f64) / x2),
-                _ => panic!("Eval error in +: invalid types for arguments")
+                _ => return self.error_str("Eval error in +: invalid types for arguments")
             },
             Expr::Float(x1) => match *r2 {
                 Expr::Integer(x2) => Expr::Float(x1 / (x2 as f64)),
                 Expr::Float(x2) => Expr::Float(x1 / x2),
-                _ => panic!("Eval error in +: invalid types for arguments")
+                _ => return self.error_str("Eval error in +: invalid types for arguments")
             },
-            _ => panic!("Eval error in +: invalid types for arguments")
+            _ => return self.error_str("Eval error in +: invalid types for arguments")
         };
 
         let mut new_c = c.clone();
@@ -302,11 +332,11 @@ impl Context {
                                 new_c = c.eval();
                                 r2 = new_c.expr.clone()
                             }
-                            _ => panic!("Too many arguments to def")
+                            _ => return self.error_str("Too many arguments to def")
                         },
-                    _ => panic!("Wrong number of arguments to def")
+                    _ => return self.error_str("Wrong number of arguments to def")
                 },
-            _ => panic!("Wrong number of argumets to def")
+            _ => return self.error_str("Wrong number of argumets to def")
         }
         
         match *r1 {
@@ -315,7 +345,7 @@ impl Context {
                 c.expr = r2.clone();
                 c
             }
-            _ => panic!("def must take an ident as first parameter")
+            _ => self.error_str("def must take an ident as first parameter")
         }
     }
 
@@ -327,7 +357,7 @@ impl Context {
                 c.expr = car.clone();
                 c
             }
-            _ => panic! ("Error: car must take a list")
+            _ => self.error_str ("Error: car must take a list")
         }
     }
 
@@ -339,7 +369,7 @@ impl Context {
                 c.expr = cdr.clone();
                 c
             }
-            _ => panic! ("Error: cdr must take a list")
+            _ => self.error_str ("Error: cdr must take a list")
         }
     }
 
@@ -362,11 +392,11 @@ impl Context {
                                 args = a.clone();
                                 body = b.clone();
                             },
-                            _ => panic!("Too many arguments to lambda")
+                            _ => return self.error_str("Too many arguments to lambda")
                         },
-                    _ => panic! ("Wrong arguments to lambda")
+                    _ => return self.error_str ("Wrong arguments to lambda")
                 },
-            _ => panic! ("Wrong arguments to lambda")
+            _ => return self.error_str ("Wrong arguments to lambda")
         }
         let mut c = self.clone();
         c.expr = Rc::new(Expr::Lambda(args,body,c.env.clone()));
@@ -378,7 +408,7 @@ impl Context {
         match *args_name {
             Expr::Nil => match *args {
                 Expr::Nil => self.clone(), // no args in both cases
-                _ => panic!("Error in function call: number of arguments don't match")
+                _ => self.error_str("Error in function call: number of arguments don't match")
             },
             Expr::Cons(ref a1, ref r1) => match *args {
                 Expr::Cons(ref a2, ref r2) => {
@@ -391,12 +421,12 @@ impl Context {
                             let c = c.add_env(s.clone(), v);
                             c.eval_fn_args(r1.clone(),r2.clone())
                         },
-                        _ => panic!("Argument name is not an ident!")
+                        _ => self.error_str("Argument name is not an ident!")
                     }
                 },
-                _ => panic!("Error in function call: number of arguments don't match")
+                _ => self.error_str("Error in function call: number of arguments don't match")
             },
-            _ => panic!("Fn arg names must be a list!")
+            _ => self.error_str("Fn arg names must be a list!")
         }
     }
 
@@ -436,8 +466,8 @@ impl Context {
         match *e1 {
             Expr::Ident(ref str) => self.eval_list_ident(str.clone(),e2),
             Expr::Lambda(ref args, ref body, ref env) => self.eval_fncall (args.clone(), body.clone(), e2.clone(), env.clone()),
-            Expr::Macro(_,_) => panic! ("Macro not implemented"),
-            _ => panic! ("Eval error: not a function")
+            Expr::Macro(_,_) => self.error_str ("Macro not implemented"),
+            _ => self.error_str ("Eval error: not a function")
         }
     }
 
@@ -465,7 +495,7 @@ impl Context {
                 c.eval()
             },
             Expr::Cons(ref e1, ref e2) => self.eval_list(e1.clone(), e2.clone()),
-            _ => panic! ("Not implemented")
+            _ => self.error_str ("Not implemented")
         }
     }
 }
