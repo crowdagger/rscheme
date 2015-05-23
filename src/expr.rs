@@ -15,6 +15,8 @@ pub enum Expr {
     Ident(String),
     String(String),
     Quote(Rc<Expr>),
+    Unquote(Rc<Expr>),
+    Quasiquote(Rc<Expr>),
     Cons(Rc<Expr>, Rc<Expr>)
 }
 
@@ -39,6 +41,14 @@ impl Display for Expr {
                 try!(formatter.write_str(" . "));
                 try!(e2.fmt(formatter));
                 formatter.write_str(")")
+            },
+            Expr::Unquote(ref e) => {
+                try!(formatter.write_str(","));
+                e.fmt(formatter)
+            },
+            Expr::Quasiquote(ref e) => {
+                try!(formatter.write_str("`"));
+                e.fmt(formatter)
             }
         }
     }

@@ -453,6 +453,27 @@ impl Context {
             res
         }
     }
+
+    fn eval_quasiquote (&self) -> Context {
+        match *self.expr {
+            Expr::Unquote(ref e) => {
+                let mut c = self.clone();
+                c.expr = e.clone();
+                c.eval()
+            },
+            Expr::Cons(ref car, ref cdr) => {
+                let mut c = self.clone();
+                c.expr = car.clone();
+                c = c.eval_quasiquote();
+                let car = c.expr.clone();
+                c.expr = cdr.clone();
+                c = c.eval_quasiquote();
+                let cdr = c.expr.clone();
+                c.set_expr(Expr::Cons(car,cdr))
+            },
+            _ => self.clone()
+        }
+    }
         
         
     fn eval_list_ident(&self, ident:String, e2:Rc<Expr>) -> Context {
@@ -509,6 +530,11 @@ impl Context {
                 c.expr = e.clone();
                 c
             },
+            Expr::Quasiquote(ref e) => {
+                let mut c = self.clone();
+                c.expr = e.clone();
+                c.eval_quasiquote()
+            }
             Expr::Ident(ref s) => {
                 let e = self.lookup(s);
                 let mut c = self.clone();

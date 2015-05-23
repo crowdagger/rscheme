@@ -10,7 +10,9 @@ pub enum Token {
     String (String),
     OpeningParen,
     ClosingParen,
-    Quote
+    Quote,
+    Unquote,
+    Quasiquote
 }
 
 fn read_integer (s: &str) -> Result {
@@ -82,6 +84,8 @@ fn read_single_token (s: &str) -> Result {
         Some('(') => Ok(Token::OpeningParen),
         Some(')') => Ok(Token::ClosingParen),
         Some('\'') => Ok(Token::Quote),
+        Some('`') => Ok(Token::Quasiquote),
+        Some(',') => Ok(Token::Unquote),
         Some('"') => read_string(s),
         Some('0' ... '9') => read_number(s),
         Some(_) => read_ident(s)
@@ -91,6 +95,8 @@ fn read_single_token (s: &str) -> Result {
 pub fn tokenize(s: &str) -> Option<Vec<Token>> {
     let s = s.replace("(", " ( ")
         .replace(")", " ) ")
+        .replace("`", " ` ")
+        .replace(",", " , ")
         .replace("'", "' ");
     let x: Vec<&str> = s.split(|c:char| c.is_whitespace())
         .filter(|s:&&str| if *s=="" {false} else {true})

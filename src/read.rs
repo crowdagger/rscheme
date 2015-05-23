@@ -15,6 +15,26 @@ fn read_quote<'a> (xs:&'a [Token])->(Expr, &'a [Token]) {
     }
 }
 
+fn read_unquote<'a> (xs:&'a [Token])->(Expr, &'a [Token]) {
+    if xs.len() == 0 {
+        println! ("Error parsing quote: not enough arguments");
+        (Expr::Nil, &[])
+    } else {
+        let (e,r) = read_expr(&xs[0], &xs[1..]);
+        (Expr::Unquote(Rc::new(e)), r)
+    }
+}
+
+fn read_quasiquote<'a> (xs:&'a [Token])->(Expr, &'a [Token]) {
+    if xs.len() == 0 {
+        println! ("Error parsing quote: not enough arguments");
+        (Expr::Nil, &[])
+    } else {
+        let (e,r) = read_expr(&xs[0], &xs[1..]);
+        (Expr::Quasiquote(Rc::new(e)), r)
+    }
+}
+
 fn read_paren<'a> (xs:&'a [Token])->(Expr,&'a[Token]) {
     if xs.len() == 0 {
         println! ("Error parsing '(: closing parenthesis not found");
@@ -41,6 +61,8 @@ fn read_expr<'a> (x:&Token, xs:&'a [Token])->(Expr,&'a [Token]) {
         Token::Ident(ref x) => (Expr::Ident(x.clone ()), xs),
         Token::String(ref x) => (Expr::String(x.clone()), xs),
         Token::Quote => read_quote(xs),
+        Token::Quasiquote => read_quasiquote(xs),
+        Token::Unquote => read_unquote(xs),
         Token::OpeningParen => read_paren(xs),
         Token::ClosingParen => {
             println!("Parse error: closing parenthesis doesn't match opening one");
