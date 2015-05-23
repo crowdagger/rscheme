@@ -12,6 +12,7 @@ const RESERVED_IDENTS:&'static[&'static str] = &[
     "-",
     "*",
     "/",
+    "=",
     "car",
     "cdr"];
 
@@ -22,6 +23,42 @@ fn is_reserved_ident (s: &str) -> bool {
         }
     }
     return false;
+}
+
+fn is_equal (e1:Rc<Expr>, e2:Rc<Expr>) -> bool
+{
+    match *e1 {
+        Expr::Integer(x1) => match *e2 {
+            Expr::Integer(x2) => x1 == x2,
+            _ => false
+        },
+        Expr::Float(x1) => match *e2 {
+            Expr::Float(x2) => x1 == x2,
+            _ => false
+        },
+        Expr::Nil => match *e2 {
+            Expr::Nil => true,
+            _ => false
+        },
+        Expr::Ident(ref s1) => match *e2 {
+            Expr::Ident(ref s2) => s1 == s2,
+            _ => false
+        },
+        Expr::String(ref s1) => match *e2 {
+            Expr::String(ref s2) => s1 == s2,
+            _ => false
+        },
+        Expr::Quote(ref x1) => match *e2 {
+            Expr::Quote(ref x2) => is_equal(x1.clone(), x2.clone()),
+            _ => false
+        },
+        Expr::Cons(ref car1, ref cdr1) => match *e2 {
+            Expr::Cons(ref car2, ref cdr2) => is_equal(car1.clone(), car2.clone())
+                && is_equal(cdr1.clone(), cdr2.clone()),
+            _ => false
+        },
+        _ => false
+    }
 }
 
 // Merge two environments (= hashmaps)
@@ -37,14 +74,14 @@ fn merge_envs (x:HashMap<String,Rc<Expr>>, y:HashMap<String,Rc<Expr>>) -> HashMa
 
 #[derive(Clone,Debug)]
 pub struct Context {
-    expr: Rc<Expr>,
+    pub expr: Rc<Expr>,
     env: HashMap<String,Rc<Expr>>
 }
 
 impl Context {
-    pub fn new(expr: Expr) -> Context {
+    pub fn new() -> Context {
         Context {
-            expr: Rc::new(expr),
+            expr: Rc::new(Expr::Nil),
             env: HashMap::new()
         }
     }
@@ -147,6 +184,16 @@ impl Context {
                 },
             _ => panic!("ill-formed operator")
         }        
+    }
+
+    fn eval_equal(&self, e:Rc<Expr>) -> Context {
+        let (r1, r2, mut c) = self.pre_eval_2(e);
+        if is_equal (r1, r2) {
+            c.expr = Rc::new(Expr::Ident("t".to_string()));
+        } else {
+            c.expr = Rc::new(Expr::Nil);
+        }
+        c
     }
 
     fn eval_plus(&self, e:Rc<Expr>) -> Context {
@@ -362,7 +409,9 @@ impl Context {
         c.env = merge_envs(c.env, env);
         let mut c = c.eval_fn_args (args_name, args);
         c.expr = body;
-        c.eval()
+        let mut res = c.eval();
+        res.env = self.env.clone();
+        res
     }
         
         
@@ -373,6 +422,7 @@ impl Context {
             "-" => self.eval_sub(e2),
             "/" => self.eval_div(e2),
             "*" => self.eval_mul(e2),
+            "=" => self.eval_equal(e2),
             "def" => self.eval_def(e2),
             "car" => self.eval_car(e2),
             "cdr" => self.eval_cdr(e2),
@@ -389,6 +439,12 @@ impl Context {
             Expr::Macro(_,_) => panic! ("Macro not implemented"),
             _ => panic! ("Eval error: not a function")
         }
+    }
+
+    pub fn eval_expr(&self, expr:Expr) -> Context {
+        let mut c = self.clone();
+        c.expr = Rc::new(expr);
+        c.eval()
     }
 
     pub fn eval(&self) -> Context {
