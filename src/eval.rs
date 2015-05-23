@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 const RESERVED_IDENTS:&'static[&'static str] = &[
     "print-debug",
+    "defmacro",
     "cons",
     "lambda",
     "eval",
@@ -386,6 +387,39 @@ impl Context {
         c
     }
 
+    fn eval_defmacro (&self, e:Rc<Expr>) -> Context {
+        let name:Rc<Expr>;
+        let body:Rc<Expr>;
+        let args:Rc<Expr>;
+        
+        match *e {
+            Expr::Cons (ref n, ref r) => match **r {
+                Expr::Cons (ref a, ref r) => match **r {
+                    Expr::Cons (ref b, ref r) => match **r {
+                        Expr::Nil => {
+                            name = n.clone();
+                            body = b.clone();
+                            args = a.clone();
+                        },
+                        _ => return self.error_str("Too many arguments to defmacro")
+                    },
+                    _ => return self.error_str("Wrong arguments for defmacro")
+                },
+                _ => return self.error_str("Wrong arguments for defmacro")
+            },
+            _ => return self.error_str("Wrong arguments for defmacro")
+        }
+
+        let n:String = match *name {
+            Expr::Ident(ref s) => s.clone(),
+            _ => return self.error_str("Error: macro name is not an ident")
+        };
+
+        // todo check that args are all idents
+        let c = self.set_expr(Expr::Macro(args.clone(), body.clone()));
+        c.add_env(n, c.expr.clone())
+    }
+
     fn eval_lambda (&self, e:Rc<Expr>) -> Context {
         let body:Rc<Expr>;
         let args:Rc<Expr>;
@@ -405,10 +439,10 @@ impl Context {
                 },
             _ => return self.error_str ("Wrong arguments to lambda")
         }
-        let mut c = self.clone();
-        c.expr = Rc::new(Expr::Lambda(args,body,c.env.clone()));
-        c
+        // todo check that args are all idents
+        self.set_expr (Expr::Lambda(args,body, self.env.clone()))
     }
+
 
     /// Check args of a function call, make them correspond and add them to environment    
     fn eval_fn_args (&self, args_name:Rc<Expr>, args:Rc<Expr>) -> Context {
@@ -477,7 +511,7 @@ impl Context {
     }
 
     fn eval_print_debug(&self, e:Rc<Expr>) -> Context {
-        let mut c = self.pre_eval_1(e);
+        let c = self.pre_eval_1(e);
         println!("{:?}", c.expr.clone());
         c.set_expr(Expr::Nil)
     }
@@ -498,6 +532,7 @@ impl Context {
             "lambda" => self.eval_lambda(e2),
             "eval" => self.eval_eval(e2),
             "print-debug" => self.eval_print_debug(e2),
+            "defmacro" => self.eval_defmacro(e2),
             _ => self.eval_list (self.lookup(&ident), e2)
         }
     }
