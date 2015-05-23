@@ -4,6 +4,7 @@ use std::rc::Rc;
 use std::collections::HashMap;
 
 const RESERVED_IDENTS:&'static[&'static str] = &[
+    "print-debug",
     "cons",
     "lambda",
     "eval",
@@ -474,6 +475,12 @@ impl Context {
             _ => self.clone()
         }
     }
+
+    fn eval_print_debug(&self, e:Rc<Expr>) -> Context {
+        let mut c = self.pre_eval_1(e);
+        println!("{:?}", c.expr.clone());
+        c.set_expr(Expr::Nil)
+    }
         
         
     fn eval_list_ident(&self, ident:String, e2:Rc<Expr>) -> Context {
@@ -490,6 +497,7 @@ impl Context {
             "cons" => self.eval_cons(e2),
             "lambda" => self.eval_lambda(e2),
             "eval" => self.eval_eval(e2),
+            "print-debug" => self.eval_print_debug(e2),
             _ => self.eval_list (self.lookup(&ident), e2)
         }
     }
@@ -507,7 +515,8 @@ impl Context {
             }
             Expr::Macro(_,_) => self.error_str ("Macro not implemented"),
             _ => {
-                println!("Eval error: not a function: {:?}", e1);
+                println!("Eval error: not a function: {:?}; full context:", e1);
+                println!("{:?}", self);
                 self.error()
             }
         }
@@ -536,10 +545,12 @@ impl Context {
                 c.eval_quasiquote()
             }
             Expr::Ident(ref s) => {
+                println!("Evaling {}", s);
                 let e = self.lookup(s);
                 let mut c = self.clone();
                 c.expr = e;
-                c.eval()
+                c
+                    //c.eval()
             },
             Expr::Cons(ref e1, ref e2) => self.eval_list(e1.clone(), e2.clone()),
             _ => self.clone()

@@ -23,8 +23,8 @@ pub enum Expr {
 fn fmt_inlist(e: &Expr, formatter:&mut Formatter) -> Result<(),Error> {
     match *e {
         Expr::Cons(ref e1,ref e2) => {
-            try!(e1.fmt(formatter));
             try!(formatter.write_str(" "));
+            try!(e1.fmt(formatter));
             fmt_inlist (e2, formatter)
         },
         Expr::Nil => formatter.write_str(")"),
@@ -50,7 +50,6 @@ impl Display for Expr {
             Expr::Cons(ref e1, ref e2) => {
                 try!(formatter.write_str("("));
                 try!(e1.fmt(formatter));
-                try!(formatter.write_str(" "));
                 fmt_inlist(e2, formatter)
             },
             Expr::Unquote(ref e) => {
