@@ -1,12 +1,14 @@
 use lexer::Token;
+use lexer;
 use list;
 
 use std::rc::Rc;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub enum Expr {
     Nil,
-    Lambda(Rc<Expr>, Rc<Expr>),
+    Lambda(Rc<Expr>, Rc<Expr>, HashMap<String,Rc<Expr>>),
     Macro(Rc<Expr>, Rc<Expr>),
     Integer(i64),
     Float(f64),
@@ -64,4 +66,14 @@ pub fn read(xs: &[Token])-> Expr {
     }
 }
 
+pub fn read_str(s:&str) -> Expr {
+    let o = lexer::tokenize(s);
+    match o {
+        None => {
+            println!("Lexer failed");
+            Expr::Nil
+        }
+        Some(v) => read(&*v)
+    }
+}
     

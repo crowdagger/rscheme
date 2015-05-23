@@ -32,18 +32,19 @@ fn main() {
     //    let s = "(1 2)";
     //    let s = "(if titi 2 3)";
     //    let s = "(def x (if titi (- titi (+ 2 (* 4 (/ 2.5 5)))) (+ 3 5 6)))";
-    let s = "(cdr (cdr '(1 2 3)))";
-    let o = lexer::tokenize (s);
-    match o {
-        None => println! ("First pass failed"),
-        Some(v) => {
-            let e = read::read(&*v);
-            println!("{:?}", &e);
-            let c = eval::Context::new(e);
-            let c = c.add_env("titi".to_string(),Rc::new(read::Expr::Integer(42)));
-            //let c = c.add_env("titi".to_string(),Rc::new(read::Expr::Nil));
-            println!("{:?}", &c);
-            println!("{:?}", c.eval());
-        }
-    }
+    //    let s = "(cons 1 (cons (- 2 1.0) ()))";
+    let s = "(def f (lambda (x) (* 2 x)))";
+    let e = read::read_str(s);
+    println!("{:?}", &e);
+    let c = eval::Context::new(e);
+    let c = c.add_env("titi".to_string(),Rc::new(read::Expr::Integer(42)));
+    //let c = c.add_env("titi".to_string(),Rc::new(read::Expr::Nil));
+    println!("Before eval:\n {:?}", &c);
+    let mut c = c.eval();
+    println!("After eval:\n{:?}", &c);
+    let s = "(f 42)";
+    c = c.set_expr (read::read_str(s));
+    println!("Before eval:\n {:?}", &c);
+    println!("After:\n{:?}",c.eval());
 }
+

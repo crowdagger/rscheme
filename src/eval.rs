@@ -23,6 +23,16 @@ fn is_reserved_ident (s: &str) -> bool {
     }
     return false;
 }
+
+// Merge two environments (= hashmaps)
+fn merge_envs (x:HashMap<String,Rc<Expr>>, y:HashMap<String,Rc<Expr>>) -> HashMap<String,Rc<Expr>>
+{
+    let mut res = x.clone();
+    for (s,e) in y.iter() {
+        res.insert(s.clone(),e.clone());
+    }
+    res
+}
         
 
 #[derive(Clone,Debug)]
@@ -37,6 +47,12 @@ impl Context {
             expr: Rc::new(expr),
             env: HashMap::new()
         }
+    }
+
+    pub fn set_expr(&self, expr: Expr) -> Context {
+        let mut c = self.clone();
+        c.expr = Rc::new(expr);
+        c
     }
 
     pub fn lookup(&self, ident: &String) -> Rc<Expr> {
@@ -279,8 +295,78 @@ impl Context {
             _ => panic! ("Error: cdr must take a list")
         }
     }
+
+    fn eval_cons (&self, e:Rc<Expr>) -> Context {
+        let (r1,r2, mut c) = self.pre_eval_2(e);
+        c.expr = Rc::new(Expr::Cons(r1.clone(),r2.clone()));
+        c
+    }
+
+    fn eval_lambda (&self, e:Rc<Expr>) -> Context {
+        let body:Rc<Expr>;
+        let args:Rc<Expr>;
         
-    fn eval_cons_ident(&self, ident:String, e2:Rc<Expr>) -> Context {
+        match *e {
+            Expr::Cons(ref a, ref r) =>
+                match **r {
+                    Expr::Cons (ref b, ref r) =>
+                        match **r {
+                            Expr::Nil => {
+                                args = a.clone();
+                                body = b.clone();
+                            },
+                            _ => panic!("Too many arguments to lambda")
+                        },
+                    _ => panic! ("Wrong arguments to lambda")
+                },
+            _ => panic! ("Wrong arguments to lambda")
+        }
+        let mut c = self.clone();
+        c.expr = Rc::new(Expr::Lambda(args,body,c.env.clone()));
+        c
+    }
+
+    /// Check args of a function call, make them correspond and add them to environment    
+    fn eval_fn_args (&self, args_name:Rc<Expr>, args:Rc<Expr>) -> Context {
+        match *args_name {
+            Expr::Nil => match *args {
+                Expr::Nil => self.clone(), // no args in both cases
+                _ => panic!("Error in function call: number of arguments don't match")
+            },
+            Expr::Cons(ref a1, ref r1) => match *args {
+                Expr::Cons(ref a2, ref r2) => {
+                    match **a1 {
+                        Expr::Ident(ref s) => { // it matches, so we do our stuff
+                            let mut c = self.clone();
+                            c.expr = a2.clone();
+                            let c = c.eval();
+                            let v = c.expr.clone();
+                            let c = c.add_env(s.clone(), v);
+                            c.eval_fn_args(r1.clone(),r2.clone())
+                        },
+                        _ => panic!("Argument name is not an ident!")
+                    }
+                },
+                _ => panic!("Error in function call: number of arguments don't match")
+            },
+            _ => panic!("Fn arg names must be a list!")
+        }
+    }
+
+    fn eval_fncall (&self,
+                    args_name:Rc<Expr>,
+                    body:Rc<Expr>,
+                    args:Rc<Expr>,
+                    env:HashMap<String,Rc<Expr>>) -> Context {
+        let mut c = self.clone();
+        c.env = merge_envs(c.env, env);
+        let mut c = c.eval_fn_args (args_name, args);
+        c.expr = body;
+        c.eval()
+    }
+        
+        
+    fn eval_list_ident(&self, ident:String, e2:Rc<Expr>) -> Context {
         match ident.as_ref() {
             "if" => self.eval_if(e2),
             "+" => self.eval_plus(e2),
@@ -290,16 +376,16 @@ impl Context {
             "def" => self.eval_def(e2),
             "car" => self.eval_car(e2),
             "cdr" => self.eval_cdr(e2),
-            "cons" => panic!("Cons not implemented"),
-            "lambda" => panic!("lambda not implemented"),
-            _ => panic!("custom call not implemented")
+            "cons" => self.eval_cons(e2),
+            "lambda" => self.eval_lambda(e2),
+            _ => self.eval_list (self.lookup(&ident), e2)
         }
     }
 
-    fn eval_cons(&self, e1:Rc<Expr>,e2:Rc<Expr>) -> Context {
+    fn eval_list(&self, e1:Rc<Expr>,e2:Rc<Expr>) -> Context {
         match *e1 {
-            Expr::Ident(ref str) => self.eval_cons_ident(str.clone(),e2),
-            Expr::Lambda(_,_) => panic! ("FnCall not implemented"),
+            Expr::Ident(ref str) => self.eval_list_ident(str.clone(),e2),
+            Expr::Lambda(ref args, ref body, ref env) => self.eval_fncall (args.clone(), body.clone(), e2.clone(), env.clone()),
             Expr::Macro(_,_) => panic! ("Macro not implemented"),
             _ => panic! ("Eval error: not a function")
         }
@@ -322,7 +408,7 @@ impl Context {
                 c.expr = e;
                 c.eval()
             },
-            Expr::Cons(ref e1, ref e2) => self.eval_cons(e1.clone(), e2.clone()),
+            Expr::Cons(ref e1, ref e2) => self.eval_list(e1.clone(), e2.clone()),
             _ => panic! ("Not implemented")
         }
     }
