@@ -1,22 +1,9 @@
 use lexer::Token;
 use lexer;
-use list;
+use expr::Expr;
 
 use std::rc::Rc;
-use std::collections::HashMap;
 
-#[derive(Debug)]
-pub enum Expr {
-    Nil,
-    Lambda(Rc<Expr>, Rc<Expr>, HashMap<String,Rc<Expr>>),
-    Macro(Rc<Expr>, Rc<Expr>),
-    Integer(i64),
-    Float(f64),
-    Ident(String),
-    String(String),
-    Quote(Rc<Expr>),
-    Cons(Rc<Expr>, Rc<Expr>)
-}
 
 fn read_quote<'a> (xs:&'a [Token])->(Expr, &'a [Token]) {
     if xs.len() == 0 {
@@ -66,7 +53,7 @@ pub fn read(xs: &[Token])-> Expr {
     if xs.len() == 0 {
         Expr::Nil
     } else {
-        let (e,r) = read_expr (&xs[0], &xs[1..]);
+        let (e,_) = read_expr (&xs[0], &xs[1..]);
         e
     }
 }

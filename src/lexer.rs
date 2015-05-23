@@ -95,7 +95,6 @@ pub fn tokenize(s: &str) -> Option<Vec<Token>> {
     let x: Vec<&str> = s.split(|c:char| c.is_whitespace())
         .filter(|s:&&str| if *s=="" {false} else {true})
         .collect();
-//    println!("{:?}", x);
     let mut res: Vec<Token> = vec! ();
     let mut err = false;
     for s in x.iter () {

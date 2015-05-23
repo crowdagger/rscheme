@@ -1,4 +1,4 @@
-use read::Expr;
+use expr::Expr;
 
 use std::rc::Rc;
 use std::collections::HashMap;
@@ -6,6 +6,7 @@ use std::collections::HashMap;
 const RESERVED_IDENTS:&'static[&'static str] = &[
     "cons",
     "lambda",
+    "eval",
     "def",
     "if",
     "+",
@@ -15,14 +16,6 @@ const RESERVED_IDENTS:&'static[&'static str] = &[
     "=",
     "car",
     "cdr"];
-
-/// Sets an expr to nil, plus displays an error message
-fn error_expr (s:&str) -> Expr
-{
-    println!("{}", s);
-    Expr::Nil
-}
-    
 
 fn is_reserved_ident (s: &str) -> bool {
     for i in RESERVED_IDENTS {
@@ -97,8 +90,7 @@ impl Context {
     }
 
     fn error(&self) -> Context {
-        let mut c = self.clone();
-        c.expr = Rc::new(Expr::Nil);
+        let mut c = self.set_expr (Expr::Nil);
         c.error = true;
         c
     }
@@ -218,13 +210,17 @@ impl Context {
 
     fn eval_equal(&self, e:Rc<Expr>) -> Context {
         let (r1, r2, mut c) = self.pre_eval_2(e);
-        if is_equal (r1, r2) {
-            c.expr = Rc::new(Expr::Ident("t".to_string()));
+        if c.has_error() {
+            c
         } else {
-            c.expr = Rc::new(Expr::Nil);
+            if is_equal (r1, r2) {
+                c.expr = Rc::new(Expr::Ident("t".to_string()));
+            } else {
+                c.expr = Rc::new(Expr::Nil);
+            }
+            c
         }
-        c
-    }
+    } 
 
     fn eval_plus(&self, e:Rc<Expr>) -> Context {
         let (r1,r2,c) = self.pre_eval_2(e);
@@ -256,14 +252,14 @@ impl Context {
             Expr::Integer(x1) => match *r2 {
                 Expr::Integer(x2) => Expr::Integer(x1 - x2),
                 Expr::Float(x2) => Expr::Float((x1 as f64) - x2),
-                _ => return self.error_str("Eval error in +: invalid types for arguments")
+                _ => return self.error_str("Eval error in -: invalid types for arguments")
             },
             Expr::Float(x1) => match *r2 {
                 Expr::Integer(x2) => Expr::Float(x1 - (x2 as f64)),
                 Expr::Float(x2) => Expr::Float(x1 - x2),
-                _ => return self.error_str("Eval error in +: invalid types for arguments")
+                _ => return self.error_str("Eval error in -: invalid types for arguments")
             },
-            _ => return self.error_str("Eval error in +: invalid types for arguments")
+            _ => return self.error_str("Eval error in -: invalid types for arguments")
         };
 
         let mut new_c = c.clone();
@@ -278,14 +274,14 @@ impl Context {
             Expr::Integer(x1) => match *r2 {
                 Expr::Integer(x2) => Expr::Integer(x1 * x2),
                 Expr::Float(x2) => Expr::Float((x1 as f64) * x2),
-                _ => return self.error_str("Eval error in +: invalid types for arguments")
+                _ => return self.error_str("Eval error in *: invalid types for arguments")
             },
             Expr::Float(x1) => match *r2 {
                 Expr::Integer(x2) => Expr::Float(x1 * (x2 as f64)),
                 Expr::Float(x2) => Expr::Float(x1 * x2),
-                _ => return self.error_str("Eval error in +: invalid types for arguments")
+                _ => return self.error_str("Eval error in *: invalid types for arguments")
             },
-            _ => return self.error_str("Eval error in +: invalid types for arguments")
+            _ => return self.error_str("Eval error in *: invalid types for arguments")
         };
 
         let mut new_c = c.clone();
@@ -300,14 +296,14 @@ impl Context {
             Expr::Integer(x1) => match *r2 {
                 Expr::Integer(x2) => Expr::Integer(x1 / x2),
                 Expr::Float(x2) => Expr::Float((x1 as f64) / x2),
-                _ => return self.error_str("Eval error in +: invalid types for arguments")
+                _ => return self.error_str("Eval error in /: invalid types for arguments")
             },
             Expr::Float(x1) => match *r2 {
                 Expr::Integer(x2) => Expr::Float(x1 / (x2 as f64)),
                 Expr::Float(x2) => Expr::Float(x1 / x2),
-                _ => return self.error_str("Eval error in +: invalid types for arguments")
+                _ => return self.error_str("Eval error in /: invalid types for arguments")
             },
-            _ => return self.error_str("Eval error in +: invalid types for arguments")
+            _ => return self.error_str("Eval error in /: invalid types for arguments")
         };
 
         let mut new_c = c.clone();
@@ -349,6 +345,16 @@ impl Context {
         }
     }
 
+    fn eval_eval(&self, e:Rc<Expr>) -> Context {
+        let c = self.pre_eval_1(e);
+        if c.has_error() {
+            c
+        } else {
+            c.eval()
+        }
+    }
+
+    
     fn eval_car (&self, e:Rc<Expr>) -> Context {
         let mut c = self.pre_eval_1(e);
         let e = c.expr.clone();
@@ -438,10 +444,14 @@ impl Context {
         let mut c = self.clone();
         c.env = merge_envs(c.env, env);
         let mut c = c.eval_fn_args (args_name, args);
-        c.expr = body;
-        let mut res = c.eval();
-        res.env = self.env.clone();
-        res
+        if c.has_error() {
+            self.error()
+        } else {
+            c.expr = body;
+            let mut res = c.eval();
+            res.env = self.env.clone();
+            res
+        }
     }
         
         
@@ -458,6 +468,7 @@ impl Context {
             "cdr" => self.eval_cdr(e2),
             "cons" => self.eval_cons(e2),
             "lambda" => self.eval_lambda(e2),
+            "eval" => self.eval_eval(e2),
             _ => self.eval_list (self.lookup(&ident), e2)
         }
     }
@@ -466,8 +477,18 @@ impl Context {
         match *e1 {
             Expr::Ident(ref str) => self.eval_list_ident(str.clone(),e2),
             Expr::Lambda(ref args, ref body, ref env) => self.eval_fncall (args.clone(), body.clone(), e2.clone(), env.clone()),
+            Expr::Cons(_,_) => {
+                let mut c = self.clone();
+                c.expr = e1.clone();
+                let c = c.eval();
+                let e = c.expr.clone();
+                c.eval_list(e,e2)
+            }
             Expr::Macro(_,_) => self.error_str ("Macro not implemented"),
-            _ => self.error_str ("Eval error: not a function")
+            _ => {
+                println!("Eval error: not a function: {:?}", e1);
+                self.error()
+            }
         }
     }
 
@@ -495,7 +516,7 @@ impl Context {
                 c.eval()
             },
             Expr::Cons(ref e1, ref e2) => self.eval_list(e1.clone(), e2.clone()),
-            _ => self.error_str ("Not implemented")
+            _ => self.clone()
         }
     }
 }
