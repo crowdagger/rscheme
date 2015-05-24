@@ -38,12 +38,19 @@ Yeah it should be `define` but it's `def`.
 
 `(f x) ; returns 84`
 
+### Macros ###
+
+Some support for macros. E.g., if you want to combine def and lambda:
+
+`(defmacro defn (name args body) `(def ,name (lambda ,args ,body)))`
+
+
+
 
 Not implemented (yet?)
 ----------------------
 
 * comments
-* macros
 * variadic args
 * multiple definition of same-name func but different args number
 * input/output

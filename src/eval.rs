@@ -444,8 +444,8 @@ impl Context {
     }
 
 
-    /// Check args of a function call, make them correspond and add them to environment    
-    fn eval_fn_args (&self, args_name:Rc<Expr>, args:Rc<Expr>) -> Context {
+    /// Check args of a function or macro call, make them correspond and add them to environment    
+    fn eval_fn_args (&self, args_name:Rc<Expr>, args:Rc<Expr>, is_macro:bool) -> Context {
         match *args_name {
             Expr::Nil => match *args {
                 Expr::Nil => self.clone(), // no args in both cases
@@ -457,10 +457,10 @@ impl Context {
                         Expr::Ident(ref s) => { // it matches, so we do our stuff
                             let mut c = self.clone();
                             c.expr = a2.clone();
-                            let c = c.eval();
+                            let c = if is_macro {c} else {c.eval()};
                             let v = c.expr.clone();
                             let c = c.add_env(s.clone(), v);
-                            c.eval_fn_args(r1.clone(),r2.clone())
+                            c.eval_fn_args(r1.clone(),r2.clone(), is_macro)
                         },
                         _ => self.error_str("Argument name is not an ident!")
                     }
@@ -471,6 +471,23 @@ impl Context {
         }
     }
 
+    fn eval_macro (&self,
+                   args_name:Rc<Expr>,
+                   body:Rc<Expr>,
+                   args:Rc<Expr>) -> Context {
+        let mut c = self.eval_fn_args(args_name, args, true);
+        if c.has_error() {
+            self.error()
+        } else {
+            c.expr = body;
+            let mut res = c.eval();
+            res.env = self.env.clone();
+            // for debug
+            println!("Debug: macroexpand gives\n{}", res.expr.clone());
+            res.eval()
+        }
+    }
+
     fn eval_fncall (&self,
                     args_name:Rc<Expr>,
                     body:Rc<Expr>,
@@ -478,7 +495,7 @@ impl Context {
                     env:HashMap<String,Rc<Expr>>) -> Context {
         let mut c = self.clone();
         c.env = merge_envs(c.env, env);
-        let mut c = c.eval_fn_args (args_name, args);
+        let mut c = c.eval_fn_args (args_name, args, false);
         if c.has_error() {
             self.error()
         } else {
@@ -547,13 +564,9 @@ impl Context {
                 let c = c.eval();
                 let e = c.expr.clone();
                 c.eval_list(e,e2)
-            }
-            Expr::Macro(_,_) => self.error_str ("Macro not implemented"),
-            _ => {
-                println!("Eval error: not a function: {:?}; full context:", e1);
-                println!("{:?}", self);
-                self.error()
-            }
+            },
+            Expr::Macro(ref args,ref body) => self.eval_macro(args.clone(), body.clone(), e2.clone()),
+            _ => self.error_str("Invalid argument in firt place of evaluated list")
         }
     }
 
