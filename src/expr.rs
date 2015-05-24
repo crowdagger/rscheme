@@ -4,7 +4,7 @@ use std::fmt::Display;
 use std::rc::Rc;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq)]
 pub enum Expr {
     Nil,
     Lambda(Rc<Expr>, Rc<Expr>, HashMap<String,Rc<Expr>>),
@@ -62,3 +62,25 @@ impl Display for Expr {
         }
     }
 }
+
+
+// impl PartialEq for Expr {
+//     fn eq(&self, other:&Expr) -> bool {
+//         match *self {
+//             Expr::Nil = match *other {
+//                 Expr::Nil => true,
+//                 _ => false
+//             },
+//             Expr::Lambda(Rc<Expr>, Rc<Expr>, HashMap<String,Rc<Expr>>),
+//     Expr::Macro(Rc<Expr>, Rc<Expr>),
+//     Expr::Integer(i64),
+//     Expr::Float(f64),
+//     Expr::Ident(String),
+//     Expr::String(String),
+//     Expr::Quote(Rc<Expr>),
+//     Expr::Unquote(Rc<Expr>),
+//     Expr::Quasiquote(Rc<Expr>),
+//     Expr::Cons(Rc<Expr>, Rc<Expr>)
+//         }
+//     }
+// }

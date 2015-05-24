@@ -3,6 +3,9 @@ mod read;
 mod eval;
 mod expr;
 
+#[cfg(test)]
+mod tests;
+
 use std::io::{self,BufRead};
 use std::io::Write;
 
