@@ -576,7 +576,7 @@ impl Context {
                 c.eval_list(e,e2)
             },
             Expr::Macro(ref args,ref body) => self.eval_macro(args.clone(), body.clone(), e2.clone()),
-            _ => self.error_str("Invalid argument in firt place of evaluated list")
+            _ => self.error_str("Invalid argument in first place of evaluated list")
         }
     }
 

@@ -3,9 +3,11 @@
         (lambda ,args
           ,body)))
 
-
 (defn car (xs)
   (_car xs))
+
+(defn cadr (xs)
+  (car (cdr xs)))
 
 (defn cdr (xs)
   (_cdr xs))
@@ -44,14 +46,11 @@
       (cons (f (car xs))
             (map f (cdr xs)))))
 
-(defn plus2 (x)
-  (+ 2 x))
-
-(defn double (x)
-  (_* 2 x))
-
-(defn triple (x)
-  (* 3 x))
-
 (defn inc (x)
   (+ x 1))
+
+(defmacro let (args body)
+  (cons `(lambda ,(map car args)
+           ,body)
+        (map cadr args)))
+    

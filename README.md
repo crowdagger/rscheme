@@ -42,10 +42,23 @@ Yeah it should be `define` but it's `def`.
 
 Some support for macros. E.g., if you want to combine def and lambda:
 
-`(defmacro defn (name args body) `(def ,name (lambda ,args ,body)))`
+`(defmacro defn (name args body) ``(def ,name (lambda ,args ,body)))`
 
+### Let ###
 
+Let is available and is implemented via a macro, e.g
 
+```scheme
+(let ((x 2)
+      (y 3))
+     (+ x y))
+```
+
+will be expanded to:
+
+```scheme
+((lambda (x y) (+ x y)) 2 3)
+```
 
 Not implemented (yet?)
 ----------------------
