@@ -8,7 +8,7 @@ use std::io::Read;
 
 fn read_quote<'a> (xs:&'a [Token])->(Expr, &'a [Token]) {
     if xs.len() == 0 {
-        println! ("Error parsing quote: not enough arguments");
+        error! ("Error parsing quote: not enough arguments");
         (Expr::Nil, &[])
     } else {
         let (e,r) = read_expr(&xs[0], &xs[1..]);
@@ -18,7 +18,7 @@ fn read_quote<'a> (xs:&'a [Token])->(Expr, &'a [Token]) {
 
 fn read_unquote<'a> (xs:&'a [Token])->(Expr, &'a [Token]) {
     if xs.len() == 0 {
-        println! ("Error parsing quote: not enough arguments");
+        error! ("Error parsing quote: not enough arguments");
         (Expr::Nil, &[])
     } else {
         let (e,r) = read_expr(&xs[0], &xs[1..]);
@@ -28,7 +28,7 @@ fn read_unquote<'a> (xs:&'a [Token])->(Expr, &'a [Token]) {
 
 fn read_quasiquote<'a> (xs:&'a [Token])->(Expr, &'a [Token]) {
     if xs.len() == 0 {
-        println! ("Error parsing quote: not enough arguments");
+        error! ("Error parsing quote: not enough arguments");
         (Expr::Nil, &[])
     } else {
         let (e,r) = read_expr(&xs[0], &xs[1..]);
@@ -38,7 +38,7 @@ fn read_quasiquote<'a> (xs:&'a [Token])->(Expr, &'a [Token]) {
 
 fn read_paren<'a> (xs:&'a [Token])->(Expr,&'a[Token]) {
     if xs.len() == 0 {
-        println! ("Error parsing '(: closing parenthesis not found");
+        error! ("Error parsing '(: closing parenthesis not found");
         (Expr::Nil,&[])
     } else {
         let x:&Token=&xs[0];
@@ -66,7 +66,7 @@ fn read_expr<'a> (x:&Token, xs:&'a [Token])->(Expr,&'a [Token]) {
         Token::Unquote => read_unquote(xs),
         Token::OpeningParen => read_paren(xs),
         Token::ClosingParen => {
-            println!("Parse error: closing parenthesis doesn't match opening one");
+            error!("Parse error: closing parenthesis doesn't match opening one");
             (Expr::Nil, &[])
         }
     }
@@ -94,8 +94,8 @@ pub fn read_str(s:&str) -> Vec<Rc<Expr>> {
     let o = lexer::tokenize(s);
     match o {
         None => {
-            println!("Lexer failed");
-            vec!(Rc::new(Expr::Nil))
+            error!("Lexer failed");
+            vec!()
         }
         Some(v) => read(&*v)
     }
@@ -108,7 +108,7 @@ pub fn read_file(s:&str) -> Vec<Rc<Expr>> {
 
     match r {
         Err(_) => {
-            println!("Error opening file {}", s);
+            error!("Error opening file {}", s);
             return res;
         },
         Ok(ref f) => {

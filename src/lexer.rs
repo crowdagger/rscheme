@@ -107,7 +107,7 @@ pub fn tokenize(s: &str) -> Option<Vec<Token>> {
         let r = read_single_token (s);
         match r {
             Err(s) => {
-                println! ("{}", s);
+                error!("{}", s);
                 err = true;
             },
             Ok(t) => res.push (t)

@@ -4,6 +4,8 @@ use read;
 use std::rc::Rc;
 use std::collections::HashMap;
 
+
+
 const RESERVED_IDENTS:&'static[&'static str] = &[
     "print-debug",
     "defmacro",
@@ -44,7 +46,7 @@ fn merge_envs (x:HashMap<String,Rc<Expr>>, y:HashMap<String,Rc<Expr>>) -> HashMa
 pub struct Context {
     pub expr: Rc<Expr>,
     env: HashMap<String,Rc<Expr>>,
-    error: bool
+    pub error: bool
 }
 
 impl Context {
@@ -63,11 +65,11 @@ impl Context {
     }
 
     fn error_str(&self, s:&str)-> Context {
-        println!("{}", s);
+        error!("{}", s);
         self.error()
     }
 
-    fn has_error(&self) -> bool {
+    pub fn has_error(&self) -> bool {
         self.error
     }
     
@@ -77,19 +79,25 @@ impl Context {
         c
     }
 
-    pub fn lookup(&self, ident: &String) -> Rc<Expr> {
+    pub fn set_rcexpr(&self, expr:Rc<Expr>) -> Context {
+        let mut c = self.clone();
+        c.expr = expr.clone();
+        c
+    }
+
+    pub fn lookup(&self, ident: &String) -> Context {
         match self.env.get (ident) {
             None => {
-                println!("Lookup: variable {} not found in environment", ident);
-                Rc::new(Expr::Nil)
+                error!("Lookup: variable {} not found in environment", ident);
+                self.error()                
             },
-            Some(x)  => (*x).clone()
+            Some(x)  => self.set_rcexpr(x.clone())
         }
     }
 
     pub fn add_env(&self, ident:String, expr:Rc<Expr>) -> Context {
         if is_reserved_ident (&ident) {
-            println!("Keyword {} is reserved", ident);
+            error!("Keyword {} is reserved", ident);
             self.error()
         } else {
             let mut context = self.clone();
@@ -457,7 +465,7 @@ impl Context {
             let mut res = c.eval();
             res.env = self.env.clone();
             // for debug
-            println!("Debug: macroexpand gives\n{}", res.expr.clone());
+            info!("Debug: macroexpand gives\n{}", res.expr.clone());
             res.eval()
         }
     }
@@ -524,7 +532,14 @@ impl Context {
             "eval" => self.eval_eval(e2),
             "print-debug" => self.eval_print_debug(e2),
             "defmacro" => self.eval_defmacro(e2),
-            _ => self.eval_list (self.lookup(&ident), e2)
+            _ => {
+                let c = self.lookup(&ident);
+                if (c.error) {
+                    c
+                } else {
+                    self.eval_list (c.expr, e2)
+                }
+            }
         }
     }
 
@@ -576,11 +591,14 @@ impl Context {
                 c.eval_quasiquote()
             }
             Expr::Ident(ref s) => {
-                let e = self.lookup(s);
-                let mut c = self.clone();
-                c.expr = e;
-                c
-                    //c.eval()
+                let c = self.lookup(s);
+                if (c.error) {
+                    c
+                } else {
+                    let e = c.expr;
+                    self.set_rcexpr(e)
+                        //c.eval()
+                }
             },
             Expr::Cons(ref e1, ref e2) => self.eval_list(e1.clone(), e2.clone()),
             _ => self.clone()
