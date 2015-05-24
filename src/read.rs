@@ -3,7 +3,8 @@ use lexer;
 use expr::Expr;
 
 use std::rc::Rc;
-
+use std::fs::File;
+use std::io::Read;
 
 fn read_quote<'a> (xs:&'a [Token])->(Expr, &'a [Token]) {
     if xs.len() == 0 {
@@ -71,23 +72,50 @@ fn read_expr<'a> (x:&Token, xs:&'a [Token])->(Expr,&'a [Token]) {
     }
 }
 
-pub fn read(xs: &[Token])-> Expr {
-    if xs.len() == 0 {
-        Expr::Nil
+pub fn read(xs: &[Token])-> Vec<Rc<Expr>> {
+    let mut res:Vec<Rc<Expr>> = vec!();
+    let mut tokens = xs;
+    if tokens.len() == 0 {
+        res
     } else {
-        let (e,_) = read_expr (&xs[0], &xs[1..]);
-        e
+        loop {
+            let (e,r) = read_expr (&tokens[0], &tokens[1..]);
+            res.push(Rc::new(e));
+            if r.len() == 0 {
+                return res;
+            } else {
+                tokens = r;
+            }
+        }
     }
 }
 
-pub fn read_str(s:&str) -> Expr {
+pub fn read_str(s:&str) -> Vec<Rc<Expr>> {
     let o = lexer::tokenize(s);
     match o {
         None => {
             println!("Lexer failed");
-            Expr::Nil
+            vec!(Rc::new(Expr::Nil))
         }
         Some(v) => read(&*v)
     }
 }
-    
+
+pub fn read_file(s:&str) -> Vec<Rc<Expr>> {
+    let res:Vec<Rc<Expr>> = vec!();
+    let r = File::open(s);
+    let mut file:&File;
+
+    match r {
+        Err(_) => {
+            println!("Error opening file {}", s);
+            return res;
+        },
+        Ok(ref f) => {
+            file = f;
+        }
+    }
+    let mut content = String::new();
+    file.read_to_string(&mut content).unwrap();
+    read_str (content.as_ref())
+}

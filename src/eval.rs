@@ -1,4 +1,5 @@
 use expr::Expr;
+use read;
 
 use std::rc::Rc;
 use std::collections::HashMap;
@@ -6,18 +7,18 @@ use std::collections::HashMap;
 const RESERVED_IDENTS:&'static[&'static str] = &[
     "print-debug",
     "defmacro",
-    "cons",
+    "_cons",
     "lambda",
     "eval",
     "def",
     "if",
-    "+",
-    "-",
-    "*",
-    "/",
-    "=",
-    "car",
-    "cdr"];
+    "_+",
+    "_-",
+    "_*",
+    "_/",
+    "_=",
+    "_car",
+    "_cdr"];
 
 fn is_reserved_ident (s: &str) -> bool {
     for i in RESERVED_IDENTS {
@@ -196,6 +197,7 @@ impl Context {
                                 c.expr = (*e1).clone();
                                 let mut c = c.eval().clone();
                                 let r1 = c.expr.clone();
+                                c = self.clone();
                                 c.expr = (*e2).clone();
                                 let c = c.eval();
                                 let r2 = c.expr.clone();
@@ -274,7 +276,9 @@ impl Context {
 
         let expr:Expr = match *r1 {
             Expr::Integer(x1) => match *r2 {
-                Expr::Integer(x2) => Expr::Integer(x1 * x2),
+                Expr::Integer(x2) => {
+                    Expr::Integer(x1 * x2)
+                },
                 Expr::Float(x2) => Expr::Float((x1 as f64) * x2),
                 _ => return self.error_str("Eval error in *: invalid types for arguments")
             },
@@ -440,12 +444,18 @@ impl Context {
             _ => return self.error_str ("Wrong arguments to lambda")
         }
         // todo check that args are all idents
-        self.set_expr (Expr::Lambda(args,body, self.env.clone()))
+        // todo: do better than duplicate env each time...
+//        self.set_expr (Expr::Lambda(args,body, self.env.clone()))
+        self.set_expr (Expr::Lambda(args,body, HashMap::new()))
     }
 
 
     /// Check args of a function or macro call, make them correspond and add them to environment    
-    fn eval_fn_args (&self, args_name:Rc<Expr>, args:Rc<Expr>, is_macro:bool) -> Context {
+    fn eval_fn_args (&self,
+                     args_name:Rc<Expr>,
+                     args:Rc<Expr>,
+                     is_macro:bool,
+                     old_c:&Context) -> Context {
         match *args_name {
             Expr::Nil => match *args {
                 Expr::Nil => self.clone(), // no args in both cases
@@ -455,12 +465,12 @@ impl Context {
                 Expr::Cons(ref a2, ref r2) => {
                     match **a1 {
                         Expr::Ident(ref s) => { // it matches, so we do our stuff
-                            let mut c = self.clone();
+                            let mut c = old_c.clone();
                             c.expr = a2.clone();
-                            let c = if is_macro {c} else {c.eval()};
-                            let v = c.expr.clone();
-                            let c = c.add_env(s.clone(), v);
-                            c.eval_fn_args(r1.clone(),r2.clone(), is_macro)
+                            let c = if is_macro {c} else {c.eval()}; //WRONG ENV TO EVAL THIS
+                            let v = c.expr.clone(); 
+                            let c = self.add_env(s.clone(), v);
+                            c.eval_fn_args(r1.clone(),r2.clone(), is_macro, old_c)
                         },
                         _ => self.error_str("Argument name is not an ident!")
                     }
@@ -475,7 +485,7 @@ impl Context {
                    args_name:Rc<Expr>,
                    body:Rc<Expr>,
                    args:Rc<Expr>) -> Context {
-        let mut c = self.eval_fn_args(args_name, args, true);
+        let mut c = self.eval_fn_args(args_name, args, true, self);
         if c.has_error() {
             self.error()
         } else {
@@ -495,7 +505,7 @@ impl Context {
                     env:HashMap<String,Rc<Expr>>) -> Context {
         let mut c = self.clone();
         c.env = merge_envs(c.env, env);
-        let mut c = c.eval_fn_args (args_name, args, false);
+        let mut c = c.eval_fn_args (args_name, args, false, self);
         if c.has_error() {
             self.error()
         } else {
@@ -537,15 +547,15 @@ impl Context {
     fn eval_list_ident(&self, ident:String, e2:Rc<Expr>) -> Context {
         match ident.as_ref() {
             "if" => self.eval_if(e2),
-            "+" => self.eval_plus(e2),
-            "-" => self.eval_sub(e2),
-            "/" => self.eval_div(e2),
-            "*" => self.eval_mul(e2),
-            "=" => self.eval_equal(e2),
+            "_+" => self.eval_plus(e2),
+            "_-" => self.eval_sub(e2),
+            "_/" => self.eval_div(e2),
+            "_*" => self.eval_mul(e2),
+            "_=" => self.eval_equal(e2),
             "def" => self.eval_def(e2),
-            "car" => self.eval_car(e2),
-            "cdr" => self.eval_cdr(e2),
-            "cons" => self.eval_cons(e2),
+            "_car" => self.eval_car(e2),
+            "_cdr" => self.eval_cdr(e2),
+            "_cons" => self.eval_cons(e2),
             "lambda" => self.eval_lambda(e2),
             "eval" => self.eval_eval(e2),
             "print-debug" => self.eval_print_debug(e2),
@@ -576,6 +586,15 @@ impl Context {
         c.eval()
     }
 
+    pub fn eval_file(&self, file:&str) -> Context {
+        let es = read::read_file(file);
+        let mut c = self.clone();
+        for e in es {
+            c = c.eval_expr(e.clone());
+        }
+        c
+    }
+
     pub fn eval(&self) -> Context {
         match *self.expr {
             Expr::Nil => self.clone(),
@@ -593,7 +612,6 @@ impl Context {
                 c.eval_quasiquote()
             }
             Expr::Ident(ref s) => {
-                println!("Evaling {}", s);
                 let e = self.lookup(s);
                 let mut c = self.clone();
                 c.expr = e;
