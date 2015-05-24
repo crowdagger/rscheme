@@ -96,7 +96,37 @@ fn test_macro () {
     let exp:Expr = Expr::Float(5.0);
     let e = eval_str(s);
     compare (&exp, &e)
-}        
+}
+
+
+#[test]
+fn test_env_1 () {
+    let s = "(defmacro defn (name args body)
+                            `(def ,name
+                                  (lambda ,args
+                                          ,body)))
+             (defn f (x) (_+ x 3.0))
+             (def x 2)
+             (f x)";
+    let exp:Expr = Expr::Float(5.0);
+    let e = eval_str(s);
+    compare (&exp, &e)
+}
+
+#[test]
+fn test_env_2 () {
+    let s = "(defmacro defn (name args body)
+                            `(def ,name
+                                  (lambda ,args
+                                          ,body)))
+             (defn add (x) (lambda (y) (_+ x y)))
+             (def f (add 3.0))
+             (def x 2)
+             (f 2)";
+    let exp:Expr = Expr::Float(5.0);
+    let e = eval_str(s);
+    compare (&exp, &e)
+}
              
 
              

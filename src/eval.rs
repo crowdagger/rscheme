@@ -409,8 +409,8 @@ impl Context {
         }
         // todo check that args are all idents
         // todo: do better than duplicate env each time...
-//        self.set_expr (Expr::Lambda(args,body, self.env.clone()))
-        self.set_expr (Expr::Lambda(args,body, HashMap::new()))
+        self.set_expr (Expr::Lambda(args,body, self.env.clone()))
+//        self.set_expr (Expr::Lambda(args,body, HashMap::new()))
     }
 
 
