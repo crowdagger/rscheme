@@ -13,7 +13,7 @@ fn main() {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
     let mut c = eval::Context::new();
-    c = c.eval_file("src/init.scm");
+    c = c.eval_file("data/init.scm");
 //    println!("{:?}", c);
     
     
