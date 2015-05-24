@@ -29,42 +29,6 @@ fn is_reserved_ident (s: &str) -> bool {
     return false;
 }
 
-fn is_equal (e1:Rc<Expr>, e2:Rc<Expr>) -> bool
-{
-    match *e1 {
-        Expr::Integer(x1) => match *e2 {
-            Expr::Integer(x2) => x1 == x2,
-            _ => false
-        },
-        Expr::Float(x1) => match *e2 {
-            Expr::Float(x2) => x1 == x2,
-            _ => false
-        },
-        Expr::Nil => match *e2 {
-            Expr::Nil => true,
-            _ => false
-        },
-        Expr::Ident(ref s1) => match *e2 {
-            Expr::Ident(ref s2) => s1 == s2,
-            _ => false
-        },
-        Expr::String(ref s1) => match *e2 {
-            Expr::String(ref s2) => s1 == s2,
-            _ => false
-        },
-        Expr::Quote(ref x1) => match *e2 {
-            Expr::Quote(ref x2) => is_equal(x1.clone(), x2.clone()),
-            _ => false
-        },
-        Expr::Cons(ref car1, ref cdr1) => match *e2 {
-            Expr::Cons(ref car2, ref cdr2) => is_equal(car1.clone(), car2.clone())
-                && is_equal(cdr1.clone(), cdr2.clone()),
-            _ => false
-        },
-        _ => false
-    }
-}
-
 // Merge two environments (= hashmaps)
 fn merge_envs (x:HashMap<String,Rc<Expr>>, y:HashMap<String,Rc<Expr>>) -> HashMap<String,Rc<Expr>>
 {
@@ -217,7 +181,7 @@ impl Context {
         if c.has_error() {
             c
         } else {
-            if is_equal (r1, r2) {
+            if r1 == r2 {
                 c.expr = Rc::new(Expr::Ident("t".to_string()));
             } else {
                 c.expr = Rc::new(Expr::Nil);
