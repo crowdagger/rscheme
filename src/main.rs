@@ -25,9 +25,11 @@ fn main() {
         let mut line = String::new();
         stdin.lock().read_line(&mut line).unwrap();
 
-        let e = read::read_str(line.as_ref());
-        c = c.eval_expr(e);
-        println!("{}", c.expr);
+        let es = read::read_str(line.as_ref());
+        for e in es {
+            c = c.eval_expr(e.clone());
+            println!("{}", c.expr);
+        }
     }
 }
 

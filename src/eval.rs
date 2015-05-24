@@ -570,9 +570,9 @@ impl Context {
         }
     }
 
-    pub fn eval_expr(&self, expr:Expr) -> Context {
+    pub fn eval_expr(&self, expr:Rc<Expr>) -> Context {
         let mut c = self.clone();
-        c.expr = Rc::new(expr);
+        c.expr = expr.clone();
         c.eval()
     }
 
