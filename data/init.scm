@@ -83,3 +83,15 @@
       1
       (* x (factorial (- x 1)))))
 
+(defmacro cond (preds)
+  `(if ,(car (car preds))
+       ,(cadr (car preds))
+       ,(if (nil? (cdr preds))
+            ()
+            `(cond ,(cdr preds)))))
+
+(defn compare (x y)
+  (cond (((< x y) "less_than")
+         ((> x y) "greater_than")
+         ('else "must_be_equal"))))
+
