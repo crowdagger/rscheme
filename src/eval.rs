@@ -31,7 +31,7 @@ fn is_reserved_ident (s: &str) -> bool {
 }
 
 // Merge two environments (= hashmaps)
-fn merge_envs (x:&mut HashMap<String,Rc<Expr>>, y:&Option<HashMap<String,Rc<Expr>>>) //-> HashMap<String,Rc<Expr>>
+fn merge_envs (x:&mut HashMap<String,Rc<Expr>>, y:&Option<HashMap<String,Rc<Expr>>>) 
 {
     //    let mut res = x.clone();
     match *y {
@@ -49,6 +49,7 @@ fn merge_envs (x:&mut HashMap<String,Rc<Expr>>, y:&Option<HashMap<String,Rc<Expr
 pub struct Context {
     pub expr: Rc<Expr>,
     env: HashMap<String,Rc<Expr>>,
+    global_env: HashMap<String,Rc<Expr>>,
     pub error: bool
 }
 
@@ -57,6 +58,7 @@ impl Context {
         Context {
             expr: Rc::new(Expr::Nil),
             env: HashMap::new(),
+            global_env: HashMap::new(),
             error: false
         }
     }
@@ -89,10 +91,15 @@ impl Context {
     }
 
     pub fn lookup(&self, ident: &String) -> Context {
-        match self.env.get (ident) {
+        match self.env.get(ident) {
             None => {
-                error!("Lookup: variable {} not found in environment", ident);
-                self.error()                
+                match self.global_env.get(ident) {
+                    None => {
+                        error!("Lookup: variable {} not found in environment", ident);
+                        self.error()
+                    },
+                    Some(x) => self.set_rcexpr(x.clone())
+                }
             },
             Some(x)  => self.set_rcexpr(x.clone())
         }
@@ -105,6 +112,17 @@ impl Context {
         } else {
             let mut context = self.clone();
             context.env.insert(ident, expr);
+            context
+        }
+    }
+
+    pub fn add_global(&self, ident:String, expr:Rc<Expr>) -> Context {
+        if is_reserved_ident (&ident) {
+            error!("Keyword {} is reserved", ident);
+            self.error()
+        } else {
+            let mut context = self.clone();
+            context.global_env.insert(ident, expr);
             context
         }
     }
@@ -318,7 +336,7 @@ impl Context {
         
         match *r1 {
             Expr::Ident(ref s) => {
-                let mut c = new_c.add_env(s.clone(), r2.clone());
+                let mut c = new_c.add_global(s.clone(), r2.clone());
                 c.expr = r2.clone();
                 c
             }
@@ -396,7 +414,7 @@ impl Context {
 
         // todo check that args are all idents
         let c = self.set_expr(Expr::Macro(args.clone(), body.clone()));
-        c.add_env(n, c.expr.clone())
+        c.add_global(n, c.expr.clone())
     }
 
     // Collects all idents used by a lambda,
@@ -408,7 +426,7 @@ impl Context {
         match *expr {
             Expr::Ident(ref s) => {
                 if !quote && !ignore.contains(s) &&
-                    !is_reserved_ident(s) {
+                    !is_reserved_ident(s) && !self.global_env.contains_key(s) {
                         ids.insert(s.clone());
                 }
             },
@@ -530,15 +548,13 @@ impl Context {
             } else {
                 let mut e:HashMap<String,Rc<Expr>> = HashMap::new();
                 for k in ids {
-                    let v = self.env.get(&k);
-                    match v {
-                        None => {
-                            error!("Lambda depends on ident {} but it can't be found in this context", &k);
-                            return self.error();
-                        },
-                        Some(x) => {
-                            e.insert(k.clone(),x.clone());
-                        }
+                    let c = self.lookup(&k);
+                    let v = c.expr.clone();
+                    if c.has_error() {
+                        error!("Lambda depends on ident {} but it can't be found in this context", &k);
+                        return self.error();
+                    } else {
+                        e.insert(k.clone(),v);
                     }
                 }
                 Some(e)
@@ -546,7 +562,7 @@ impl Context {
             let c = self.set_expr (Expr::Lambda(args,body, env));
             match name {
                 None => c,
-                Some(s) => c.add_env(s.clone(), self.expr.clone())
+                Some(s) => c.add_global(s.clone(), self.expr.clone())
             }
         } else {
             self.error()
