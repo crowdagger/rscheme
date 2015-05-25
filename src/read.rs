@@ -1,5 +1,5 @@
 use lexer::Token;
-use lexer;
+use lexer::Lexer;
 use expr::Expr;
 
 use std::rc::Rc;
@@ -91,14 +91,9 @@ pub fn read(xs: &[Token])-> Vec<Rc<Expr>> {
 }
 
 pub fn read_str(s:&str) -> Vec<Rc<Expr>> {
-    let o = lexer::tokenize(s);
-    match o {
-        None => {
-            error!("Lexer failed");
-            vec!()
-        }
-        Some(v) => read(&*v)
-    }
+    let mut l = Lexer::new(s);
+    let v:&[Token] = l.tokenize();
+    read(v)
 }
 
 pub fn read_file(s:&str) -> Vec<Rc<Expr>> {

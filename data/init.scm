@@ -1,7 +1,6 @@
 (defmacro defn (name args body)
-  `(def ,name
-        (lambda ,name ,args
-                ,body)))
+  `(def ,name   (lambda ,name ,args
+                        ,body)))
 
 (defn car (xs)
   (_car xs))
@@ -91,7 +90,7 @@
             `(cond ,(cdr preds)))))
 
 (defn compare (x y)
-  (cond (((< x y) "less_than")
-         ((> x y) "greater_than")
-         ('else "must_be_equal"))))
+  (cond (((< x y) "less than")
+         ((> x y) "greater than")
+         ('else "must be equal"))))
 

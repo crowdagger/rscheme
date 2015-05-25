@@ -26,7 +26,7 @@ fn main() {
         match r {
             Ok(_) => (),
             Err(_) => {
-                println!("Error flushing stdout. abort");
+                error!("Error flushing stdout. abort");
                 break;
             }
         }
