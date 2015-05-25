@@ -7,8 +7,6 @@ Dependencies
 You'll need the Rust compiler and
 Cargo. [See there]{http://www.rust-lang.org/install.html}.
 
-
-
 Usage
 -----
 `$ cargo run`
@@ -17,9 +15,8 @@ should build and run rscheme. Running the program just launches a
 pseudo-scheme REPL, then you can enter (pseudo-)scheme code.
 
 The file `data/init.scm` is loaded when `rscheme` is launched. If you
-run it from another directory, it won't work as well and you'll miss a
-few features. 
-
+run it from another directory, it won't work as well and you'll miss
+some features.
 
 Features
 --------
@@ -81,7 +78,6 @@ will be expanded to:
 Not implemented (yet?)
 ----------------------
 
-* comments
 * variadic args
 * multiple definition of same-name func but different args number
 * input/output
