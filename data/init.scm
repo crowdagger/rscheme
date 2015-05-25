@@ -1,7 +1,7 @@
 (defmacro defn (name args body)
   `(def ,name
         (lambda ,name ,args
-          ,body)))
+                ,body)))
 
 (defn car (xs)
   (_car xs))
@@ -29,6 +29,30 @@
 
 (defn / (x y)
   (_/ x y))
+
+(defn < (x y)
+  (_< x y))
+
+(defn > (x y)
+  (_> x y))
+
+(defmacro or (p1 p2)
+  `(if ,p1
+       't
+       ,p2))
+
+(defmacro and (p1 p2)
+  `(if ,p1
+       ,p2
+       ()))
+
+(defn <= (x y)
+  (or (< x y)
+      (= x y)))
+
+(defn >= (x y)
+  (or (> x y)
+      (= x y)))
 
 (defn nil? (xs)
   (if (= () xs)
@@ -58,3 +82,4 @@
   (if (= x 0)
       1
       (* x (factorial (- x 1)))))
+

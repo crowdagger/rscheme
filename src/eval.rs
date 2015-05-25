@@ -18,6 +18,8 @@ const RESERVED_IDENTS:&'static[&'static str] = &[
     "_*",
     "_/",
     "_=",
+    "_<",
+    "_>",
     "_car",
     "_cdr"];
 
@@ -264,6 +266,66 @@ impl Context {
         new_c
     }
 
+    fn eval_gt(&self, e:Rc<Expr>) -> Context {
+        let (r1,r2,c) = self.pre_eval_2(e);
+
+        let is_lt = match *r1 {
+            Expr::Integer(x1) => match *r2 {
+                Expr::Integer(x2) => x1 > x2,
+                Expr::Float(x2) => (x1 as f64) > x2,
+                _ => return self.error_str("Eval error in >: invalid types for arguments")
+            },
+            Expr::Float(x1) => match *r2 {
+                Expr::Integer(x2) => x1 > (x2 as f64),
+                Expr::Float(x2) => x1 > x2,
+                _ => return self.error_str("Eval error in >: invalid types for arguments")
+            },
+            Expr::String(ref s1) => match *r2 {
+                Expr::String(ref s2) => s1 > s2,
+                _ => return self.error_str("Eval error in >: invalid types for arguments")
+            },
+            _ => return self.error_str("Eval error in >: invalid types for arguments")
+        };
+
+        let expr = if is_lt {
+            Expr::Ident("t".to_string())
+        } else {
+            Expr::Nil
+        };
+        
+        c.set_expr(expr)
+    }
+
+    fn eval_lt(&self, e:Rc<Expr>) -> Context {
+        let (r1,r2,c) = self.pre_eval_2(e);
+
+        let is_lt = match *r1 {
+            Expr::Integer(x1) => match *r2 {
+                Expr::Integer(x2) => x1 < x2,
+                Expr::Float(x2) => (x1 as f64) < x2,
+                _ => return self.error_str("Eval error in <: invalid types for arguments")
+            },
+            Expr::Float(x1) => match *r2 {
+                Expr::Integer(x2) => x1 < (x2 as f64),
+                Expr::Float(x2) => x1 < x2,
+                _ => return self.error_str("Eval error in <: invalid types for arguments")
+            },
+            Expr::String(ref s1) => match *r2 {
+                Expr::String(ref s2) => s1 < s2,
+                _ => return self.error_str("Eval error in <: invalid types for arguments")
+            },
+            _ => return self.error_str("Eval error in <: invalid types for arguments")
+        };
+
+        let expr = if is_lt {
+            Expr::Ident("t".to_string())
+        } else {
+            Expr::Nil
+        };
+        
+        c.set_expr(expr)
+    }
+
     fn eval_mul(&self, e:Rc<Expr>) -> Context {
         let (r1,r2,c) = self.pre_eval_2(e);
 
@@ -287,7 +349,7 @@ impl Context {
         new_c.expr = Rc::new(expr);
         new_c
     }
-
+    
     fn eval_div(&self, e:Rc<Expr>) -> Context {
         let (r1,r2,c) = self.pre_eval_2(e);
 
@@ -435,7 +497,6 @@ impl Context {
                     Expr::Ident(ref s) => {
                         if "lambda".to_string() == s.clone() {
                             if !quote {
-                                info!("Inner lambda detected");
                                 // not our problem (for now)
                             } else {
                                 self.collect_idents(e2, ids, ignore, quote);
@@ -495,8 +556,6 @@ impl Context {
                     Expr::Cons (ref b, ref r) =>
                         match **r {
                             Expr::Nil => {
-                                info!("args: {:?}", a);
-                                info!("body: {:?}", b);
                                 args = a.clone();
                                 body = b.clone();
                             },
@@ -505,9 +564,6 @@ impl Context {
                                     Expr::Nil => {
                                         match **a {
                                             Expr::Ident(ref s) =>  {
-                                                info!("name: {}", s);
-                                                info!("args: {:?}", b);
-                                                info!("body: {:?}", c);
                                                 name = Some(s.clone());
                                                 args = b.clone();
                                                 body = c.clone();
@@ -674,6 +730,8 @@ impl Context {
             "_/" => self.eval_div(e2),
             "_*" => self.eval_mul(e2),
             "_=" => self.eval_equal(e2),
+            "_<" => self.eval_lt(e2),
+            "_>" => self.eval_gt(e2),
             "def" => self.eval_def(e2),
             "_car" => self.eval_car(e2),
             "_cdr" => self.eval_cdr(e2),
@@ -720,6 +778,9 @@ impl Context {
         let mut c = self.clone();
         for e in es {
             c = c.eval_expr(e.clone());
+            if c.error {
+                break;
+            }
         }
         c
     }
