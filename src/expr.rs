@@ -7,7 +7,7 @@ use std::collections::HashMap;
 #[derive(Debug,PartialEq)]
 pub enum Expr {
     Nil,
-    Lambda(Rc<Expr>, Rc<Expr>, Option<HashMap<String,Rc<Expr>>>),
+    Lambda(String, Rc<Expr>, Rc<Expr>, Option<HashMap<String,Rc<Expr>>>),
     Macro(Rc<Expr>, Rc<Expr>),
     Integer(i64),
     Float(f64),
@@ -35,7 +35,7 @@ impl Display for Expr {
     fn fmt(&self, formatter:&mut Formatter) -> Result<(),Error> {
         match *self {
             Expr::Nil => formatter.write_str("()"),
-            Expr::Lambda(_,_,_) => formatter.write_str("#Lambda"),
+            Expr::Lambda(_,_,_,_) => formatter.write_str("#Lambda"),
             Expr::Macro(_,_) => formatter.write_str("#Macro"),
             Expr::Integer(x) => x.fmt(formatter),
             Expr::Float(x) => x.fmt(formatter),

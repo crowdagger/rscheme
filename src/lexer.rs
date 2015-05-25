@@ -55,9 +55,14 @@ impl<'a> Lexer<'a> {
                         self.xs = &self.xs[1..];
                     },
                     ')' => {
-                        self.tokens.push(Token::ClosingParen);
-                        self.n_par -= 1;
-                        self.xs = &self.xs[1..];
+                        if self.n_par > 0 {
+                            self.tokens.push(Token::ClosingParen);
+                            self.n_par -= 1;
+                            self.xs = &self.xs[1..];
+                        } else {
+                            error!("Mismatched parenthesis: too many )s");
+                            self.xs = "";
+                        }
                     },
                     '\\' => {
                         self.tokens.push(Token::Quote);

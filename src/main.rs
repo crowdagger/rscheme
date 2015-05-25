@@ -42,6 +42,7 @@ fn main() {
                 break;
             } else {
                 println!("{}", c.expr);
+                info!("{:?}", c.env)
             }
         }
     }

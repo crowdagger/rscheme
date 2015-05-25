@@ -50,7 +50,7 @@ fn merge_envs (x:&mut HashMap<String,Rc<Expr>>, y:&Option<HashMap<String,Rc<Expr
 #[derive(Clone,Debug)]
 pub struct Context {
     pub expr: Rc<Expr>,
-    env: HashMap<String,Rc<Expr>>,
+    pub env: HashMap<String,Rc<Expr>>,
     global_env: HashMap<String,Rc<Expr>>,
     pub error: bool
 }
@@ -609,22 +609,20 @@ impl Context {
                     if c.has_error() {
                         error!("Lambda depends on ident {} but it can't be found in this context", &k);
                         return self.error();
-                    } else {
+                     } else {
                         e.insert(k.clone(),v);
                     }
                 }
                 Some(e)
             };
-            let c = self.set_expr (Expr::Lambda(args,body, env));
-            match name {
-                None => c,
-                Some(s) => c.add_global(s.clone(), self.expr.clone())
-            }
+            let l_name:String = match name {
+                None => "".to_string(),
+                Some(s) => s.clone()
+            };
+            self.set_expr (Expr::Lambda(l_name, args,body, env))
         } else {
             self.error()
         }
-         
-//        self.set_expr (Expr::Lambda(args,body, HashMap::new()))
     }
 
 
@@ -677,12 +675,17 @@ impl Context {
     }
 
     fn eval_fncall (&self,
+                    name:String,
                     args_name:Rc<Expr>,
                     body:Rc<Expr>,
                     args:Rc<Expr>,
                     env:&Option<HashMap<String,Rc<Expr>>>) -> Context {
         let mut c = self.clone();
+        if !name.is_empty() {
+            c.add_env(name.clone(), Rc::new(Expr::Lambda(name.clone(),args_name.clone(),body.clone(),None)));
+        }
         merge_envs(&mut c.env, env);
+        
         let mut c = c.eval_fn_args (args_name, args, false, self);
         if c.has_error() {
             self.error()
@@ -754,7 +757,7 @@ impl Context {
     fn eval_list(&self, e1:Rc<Expr>,e2:Rc<Expr>) -> Context {
         match *e1 {
             Expr::Ident(ref str) => self.eval_list_ident(str.clone(),e2),
-            Expr::Lambda(ref args, ref body, ref env) => self.eval_fncall (args.clone(), body.clone(), e2.clone(), env),
+            Expr::Lambda(ref name, ref args, ref body, ref env) => self.eval_fncall (name.clone(), args.clone(), body.clone(), e2.clone(), env),
             Expr::Cons(_,_) => {
                 let mut c = self.clone();
                 c.expr = e1.clone();
@@ -769,6 +772,7 @@ impl Context {
 
     pub fn eval_expr(&self, expr:Rc<Expr>) -> Context {
         let mut c = self.clone();
+        c.env = HashMap::new();
         c.expr = expr.clone();
         c.eval()
     }
