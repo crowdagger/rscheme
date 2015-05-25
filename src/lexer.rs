@@ -90,6 +90,10 @@ impl<'a> Lexer<'a> {
                         self.xs = &self.xs[1..];
                         self.read_number(&mut s,1);
                     },
+                    ';' => {
+                        self.xs = &self.xs[1..];
+                        self.read_comment();
+                    },
                     _ => {
                         let mut s = String::new();
                         self.read_ident(&mut s);
@@ -148,7 +152,7 @@ impl<'a> Lexer<'a> {
                     self.xs = "";
                 }
             },
-            '('|')' => self.finish_number(s,n_dot),
+            '('|')'|';' => self.finish_number(s,n_dot),
             _ => {
                 error!("Lexer: Invalid character in a number: {}", c);
                 self.xs = "";
@@ -196,6 +200,21 @@ impl<'a> Lexer<'a> {
             }
         }
     }
+
+    fn read_comment(&mut self) {
+        if self.xs.len() == 0 {
+            return;
+        }
+        let c = self.xs.chars().nth(0).unwrap();
+        if c == '\n' {
+            return;
+        } else {
+            self.xs = &self.xs[1..];
+            self.read_comment();
+        }
+    }
+        
+        
     
     fn read_ident(&mut self, s:&mut String) {
         if self.xs.len() == 0 {
@@ -210,7 +229,7 @@ impl<'a> Lexer<'a> {
         }
 
         match c {
-            '(' | ')' => self.tokens.push(Token::Ident(s.clone())),
+            '(' | ')'|';' => self.tokens.push(Token::Ident(s.clone())),
             _ => {
                 s.push(c);
                 self.xs = &self.xs[1..];
