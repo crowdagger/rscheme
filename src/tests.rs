@@ -127,6 +127,24 @@ fn test_env_2 () {
     let e = eval_str(s);
     compare (&exp, &e)
 }
+
+#[test]
+fn test_factorial () {
+    let s = "
+(defmacro defn (name args body)
+  `(def ,name
+        (lambda ,name ,args
+          ,body)))
+
+(defn factorial (x)
+  (if (_= x 0)
+      1
+      (_* x (factorial (_- x 1)))))
+
+(factorial 5)";
+    let exp:Expr = Expr::Integer(120);
+    let e = eval_str(s);
+    compare (&exp, &e)
+}
              
 
-             
