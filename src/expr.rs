@@ -7,7 +7,7 @@ use std::collections::HashMap;
 #[derive(Debug,PartialEq)]
 pub enum Expr {
     Nil,
-    Lambda(Rc<Expr>, Rc<Expr>, HashMap<String,Rc<Expr>>),
+    Lambda(Rc<Expr>, Rc<Expr>, Option<HashMap<String,Rc<Expr>>>),
     Macro(Rc<Expr>, Rc<Expr>),
     Integer(i64),
     Float(f64),

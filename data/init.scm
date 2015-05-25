@@ -1,16 +1,16 @@
 (defmacro defn (name args body)
   `(def ,name
-        (lambda ,args
+        (lambda ,name ,args
           ,body)))
 
 (defn car (xs)
   (_car xs))
 
-(defn cadr (xs)
-  (car (cdr xs)))
-
 (defn cdr (xs)
   (_cdr xs))
+
+(defn cadr (xs)
+  (car (cdr xs)))
 
 (defn cons (x xs)
   (_cons x xs))

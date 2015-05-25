@@ -12,11 +12,6 @@ mod tests;
 
 use std::io::{self,BufRead};
 use std::io::Write;
-use std::env;
-
-
-
-
 
 fn main() {
     init::init();        
@@ -24,7 +19,7 @@ fn main() {
     let mut stdout = io::stdout();
     let mut c = eval::Context::new();
     c = c.eval_file("data/init.scm");
-    
+
     loop {
         print!("=> ");
         let r = stdout.flush();

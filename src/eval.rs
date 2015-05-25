@@ -3,8 +3,7 @@ use read;
 
 use std::rc::Rc;
 use std::collections::HashMap;
-
-
+use std::collections::HashSet;
 
 const RESERVED_IDENTS:&'static[&'static str] = &[
     "print-debug",
@@ -32,13 +31,17 @@ fn is_reserved_ident (s: &str) -> bool {
 }
 
 // Merge two environments (= hashmaps)
-fn merge_envs (x:HashMap<String,Rc<Expr>>, y:HashMap<String,Rc<Expr>>) -> HashMap<String,Rc<Expr>>
+fn merge_envs (x:&mut HashMap<String,Rc<Expr>>, y:&Option<HashMap<String,Rc<Expr>>>) //-> HashMap<String,Rc<Expr>>
 {
-    let mut res = x.clone();
-    for (s,e) in y.iter() {
-        res.insert(s.clone(),e.clone());
+    //    let mut res = x.clone();
+    match *y {
+        None => (),
+        Some(ref h) =>  {
+            for (s,e) in h {
+                x.insert(s.clone(),e.clone());
+            }
+        }
     }
-    res
 }
         
 
@@ -396,28 +399,159 @@ impl Context {
         c.add_env(n, c.expr.clone())
     }
 
+    // Collects all idents used by a lambda,
+    fn collect_idents(&self,
+                      expr:&Expr,
+                      ids: &mut HashSet<String>,
+                      ignore: &HashSet<String>,
+                      quote: bool) {
+        match *expr {
+            Expr::Ident(ref s) => {
+                if !quote && !ignore.contains(s) &&
+                    !is_reserved_ident(s) {
+                        ids.insert(s.clone());
+                }
+            },
+            Expr::Cons(ref e1, ref e2) => {
+                match **e1 {
+                    Expr::Ident(ref s) => {
+                        if "lambda".to_string() == s.clone() {
+                            if !quote {
+                                info!("Inner lambda detected");
+                                // not our problem (for now)
+                            } else {
+                                self.collect_idents(e2, ids, ignore, quote);
+                            }
+                        } else {
+                            self.collect_idents(e1, ids, ignore, quote);
+                            self.collect_idents(e2, ids, ignore, quote);
+                        }
+                    },
+                    _ => {
+                        self.collect_idents(e1, ids, ignore, quote);
+                        self.collect_idents(e2, ids, ignore, quote);
+                    }
+                }
+            },
+            Expr::Quasiquote(ref e) => {
+                self.collect_idents(e, ids, ignore, true);
+            },
+            Expr::Unquote(ref e) => {
+                self.collect_idents(e, ids, ignore, false);
+            },
+            _ => ()
+        }
+    }
+
+        
+    
+    // This method has two purposes:
+    // 1) Checks that all args are valid (i.e) are idents
+    // 2) Add idents in a vector so we don't need to add them to closure env
+    fn lambda_verify_args (&self,
+                           e:&Expr,
+                           v:&mut HashSet<String>) -> bool {
+        match *e {
+            Expr::Cons(ref e1, ref e2) => self.lambda_verify_args (e1, v) &&
+                self.lambda_verify_args (e2, v),
+            Expr::Ident(ref s) => {
+                v.insert(s.clone());
+                true
+            },
+            Expr::Nil => true,
+            _ => {
+                error!("Error in lambda declaration: invalid form for args (must be a list of idents");
+                false
+            }
+        }
+    }
+
     fn eval_lambda (&self, e:Rc<Expr>) -> Context {
         let body:Rc<Expr>;
         let args:Rc<Expr>;
-        
+        let mut name:Option<String> = None;
+
         match *e {
             Expr::Cons(ref a, ref r) =>
                 match **r {
                     Expr::Cons (ref b, ref r) =>
                         match **r {
                             Expr::Nil => {
+                                info!("args: {:?}", a);
+                                info!("body: {:?}", b);
                                 args = a.clone();
                                 body = b.clone();
                             },
-                            _ => return self.error_str("Too many arguments to lambda")
+                            Expr::Cons(ref c, ref r) =>
+                                match **r {
+                                    Expr::Nil => {
+                                        match **a {
+                                            Expr::Ident(ref s) =>  {
+                                                info!("name: {}", s);
+                                                info!("args: {:?}", b);
+                                                info!("body: {:?}", c);
+                                                name = Some(s.clone());
+                                                args = b.clone();
+                                                body = c.clone();
+                                            }
+                                            _ => {
+                                                error!("Error in, lambda for name, expected ident, got {:?}", a);
+                                                return self.error();
+                                            }
+                                        }
+                                            
+                                    },
+                                    _ => return self.error_str("Too many arguments to lambda")
+                                },
+                            _ => return self.error_str("Wrong arguments to lambda")
                         },
                     _ => return self.error_str ("Wrong arguments to lambda")
                 },
             _ => return self.error_str ("Wrong arguments to lambda")
         }
-        // todo check that args are all idents
-        // todo: do better than duplicate env each time...
-        self.set_expr (Expr::Lambda(args,body, self.env.clone()))
+
+        // Collect all idents in body, except those in args,
+        // and adds them to an its environment
+        let mut ignore:HashSet<String> = HashSet::new();
+        if self.lambda_verify_args (&*args, &mut ignore) {
+            match name {
+                Some(ref s) => {
+                    ignore.insert(s.clone());
+                }
+                None => ()
+            }
+            let mut ids:HashSet<String> = HashSet::new();
+            self.collect_idents(&*body, &mut ids, &ignore, false);
+            for i in ignore {
+                ids.remove(&i);
+            }
+            let env = if ids.is_empty() {
+                None
+            } else {
+                let mut e:HashMap<String,Rc<Expr>> = HashMap::new();
+                for k in ids {
+                    let v = self.env.get(&k);
+                    match v {
+                        None => {
+                            error!("Lambda depends on ident {} but it can't be found in this context", &k);
+                            return self.error();
+                        },
+                        Some(x) => {
+                            e.insert(k.clone(),x.clone());
+                        }
+                    }
+                }
+                Some(e)
+            };
+            let c = self.set_expr (Expr::Lambda(args,body, env));
+            match name {
+                None => c,
+                Some(s) => c.add_env(s.clone(), self.expr.clone())
+            }
+        } else {
+            self.error()
+        }
+         
 //        self.set_expr (Expr::Lambda(args,body, HashMap::new()))
     }
 
@@ -474,9 +608,9 @@ impl Context {
                     args_name:Rc<Expr>,
                     body:Rc<Expr>,
                     args:Rc<Expr>,
-                    env:HashMap<String,Rc<Expr>>) -> Context {
+                    env:&Option<HashMap<String,Rc<Expr>>>) -> Context {
         let mut c = self.clone();
-        c.env = merge_envs(c.env, env);
+        merge_envs(&mut c.env, env);
         let mut c = c.eval_fn_args (args_name, args, false, self);
         if c.has_error() {
             self.error()
@@ -534,7 +668,7 @@ impl Context {
             "defmacro" => self.eval_defmacro(e2),
             _ => {
                 let c = self.lookup(&ident);
-                if (c.error) {
+                if c.error {
                     c
                 } else {
                     self.eval_list (c.expr, e2)
@@ -546,7 +680,7 @@ impl Context {
     fn eval_list(&self, e1:Rc<Expr>,e2:Rc<Expr>) -> Context {
         match *e1 {
             Expr::Ident(ref str) => self.eval_list_ident(str.clone(),e2),
-            Expr::Lambda(ref args, ref body, ref env) => self.eval_fncall (args.clone(), body.clone(), e2.clone(), env.clone()),
+            Expr::Lambda(ref args, ref body, ref env) => self.eval_fncall (args.clone(), body.clone(), e2.clone(), env),
             Expr::Cons(_,_) => {
                 let mut c = self.clone();
                 c.expr = e1.clone();
@@ -592,7 +726,7 @@ impl Context {
             }
             Expr::Ident(ref s) => {
                 let c = self.lookup(s);
-                if (c.error) {
+                if c.error {
                     c
                 } else {
                     let e = c.expr;

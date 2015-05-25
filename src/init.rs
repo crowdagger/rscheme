@@ -14,6 +14,7 @@ impl Args {
     fn from_args() -> Args {
         let mut res = Args::new();
         let mut iter = env::args();
+        iter.next();
         for a in iter {
             println!("{}", a);
             match a.as_ref() {
