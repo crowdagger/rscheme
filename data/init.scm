@@ -94,3 +94,14 @@
          ((> x y) "greater than")
          ('else "must be equal"))))
 
+(defn factorial (x)
+  (if (<= x 1)
+      1
+      (* x (factorial (- x 1)))))
+
+
+(defn fibo (fibox)
+  (if (< fibox 2)
+      1
+      (+ (fibo (- fibox 1)) (fibo (- fibox 2)))))
+

@@ -2,6 +2,7 @@ use expr::Expr;
 use read;
 
 use std::rc::Rc;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -50,8 +51,8 @@ fn merge_envs (x:&mut HashMap<String,Rc<Expr>>, y:&Option<HashMap<String,Rc<Expr
 #[derive(Clone,Debug)]
 pub struct Context {
     pub expr: Rc<Expr>,
-    pub env: HashMap<String,Rc<Expr>>,
-    global_env: HashMap<String,Rc<Expr>>,
+    pub env: Rc<RefCell<HashMap<String,Rc<Expr>>>>,
+    pub global_env: Rc<RefCell<HashMap<String,Rc<Expr>>>>,
     pub error: bool
 }
 
@@ -59,8 +60,8 @@ impl Context {
     pub fn new() -> Context {
         Context {
             expr: Rc::new(Expr::Nil),
-            env: HashMap::new(),
-            global_env: HashMap::new(),
+            env: Rc::new(RefCell::new((HashMap::new()))),
+            global_env: Rc::new(RefCell::new((HashMap::new()))),
             error: false
         }
     }
@@ -93,9 +94,11 @@ impl Context {
     }
 
     pub fn lookup(&self, ident: &String) -> Context {
-        match self.env.get(ident) {
+        let env = self.env.borrow();
+        let global_env = self.global_env.borrow();
+        match env.get(ident) {
             None => {
-                match self.global_env.get(ident) {
+                match global_env.get(ident) {
                     None => {
                         error!("Lookup: variable {} not found in environment", ident);
                         self.error()
@@ -107,14 +110,23 @@ impl Context {
         }
     }
 
+    // returns a context with a duplicated env hashmap, so inserting into it won't
+    // fuck up parent context
+    pub fn dup_env(&self) -> Context {
+        let mut c = self.clone();
+        let newhash:HashMap<String,Rc<Expr>> = c.env.borrow_mut().clone();
+        c.env = Rc::new(RefCell::new(newhash));
+        c
+    }
+    
     pub fn add_env(&self, ident:String, expr:Rc<Expr>) -> Context {
         if is_reserved_ident (&ident) {
             error!("Keyword {} is reserved", ident);
             self.error()
         } else {
-            let mut context = self.clone();
-            context.env.insert(ident, expr);
-            context
+            let c = self.dup_env();
+            c.env.borrow_mut().insert(ident, expr);
+            c
         }
     }
 
@@ -123,9 +135,9 @@ impl Context {
             error!("Keyword {} is reserved", ident);
             self.error()
         } else {
-            let mut context = self.clone();
-            context.global_env.insert(ident, expr);
-            context
+            let mut global_env = self.global_env.borrow_mut();
+            global_env.insert(ident, expr);
+            self.clone()
         }
     }
 
@@ -488,7 +500,7 @@ impl Context {
         match *expr {
             Expr::Ident(ref s) => {
                 if !quote && !ignore.contains(s) &&
-                    !is_reserved_ident(s) && !self.global_env.contains_key(s) {
+                    !is_reserved_ident(s) && !self.global_env.borrow().contains_key(s) {
                         ids.insert(s.clone());
                 }
             },
@@ -643,9 +655,10 @@ impl Context {
                         Expr::Ident(ref s) => { // it matches, so we do our stuff
                             let mut c = old_c.clone();
                             c.expr = a2.clone();
-                            let c = if is_macro {c} else {c.eval()}; //WRONG ENV TO EVAL THIS
-                            let v = c.expr.clone(); 
-                            let c = self.add_env(s.clone(), v);
+                            c = if is_macro {c} else {c.eval()}; //WRONG ENV TO EVAL THIS
+                            let v = c.expr.clone();
+                            info!("evalued {} to {:?}", s, v);
+                            c = self.add_env(s.clone(), v);
                             c.eval_fn_args(r1.clone(),r2.clone(), is_macro, old_c)
                         },
                         _ => self.error_str("Argument name is not an ident!")
@@ -682,9 +695,11 @@ impl Context {
                     env:&Option<HashMap<String,Rc<Expr>>>) -> Context {
         let mut c = self.clone();
         if !name.is_empty() {
-            c.add_env(name.clone(), Rc::new(Expr::Lambda(name.clone(),args_name.clone(),body.clone(),None)));
+            c = c.add_env(name.clone(), Rc::new(Expr::Lambda(name.clone(),args_name.clone(),body.clone(),None)));
+        } else {
+            c = c.dup_env();
         }
-        merge_envs(&mut c.env, env);
+        merge_envs(&mut c.env.borrow_mut(), env);
         
         let mut c = c.eval_fn_args (args_name, args, false, self);
         if c.has_error() {
@@ -772,7 +787,7 @@ impl Context {
 
     pub fn eval_expr(&self, expr:Rc<Expr>) -> Context {
         let mut c = self.clone();
-        c.env = HashMap::new();
+        c.env = Rc::new(RefCell::new(HashMap::new()));
         c.expr = expr.clone();
         c.eval()
     }

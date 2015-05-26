@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate log;
 
+
+
 mod lexer;
 mod read;
 mod eval;
@@ -13,13 +15,11 @@ mod tests;
 use std::io::{self,BufRead};
 use std::io::Write;
 
-fn main() {
-    init::init();        
+fn repl() {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
     let mut c = eval::Context::new();
     c = c.eval_file("data/init.scm");
-
     loop {
         print!("=> ");
         let r = stdout.flush();
@@ -30,10 +30,11 @@ fn main() {
                 break;
             }
         }
-                
+
+        
         let mut line = String::new();
         stdin.lock().read_line(&mut line).unwrap();
-
+        
         let es = read::read_str(line.as_ref());
         for e in es {
             c = c.eval_expr(e.clone());
@@ -46,5 +47,10 @@ fn main() {
             }
         }
     }
+}
+
+fn main() {
+    init::init();
+    repl();
 }
 
