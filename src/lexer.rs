@@ -16,15 +16,15 @@ pub enum Token {
 }
 
 pub struct Lexer<'a> {
-    xs: &'a str,
+    xs: &'a [char],
     pub tokens: Vec<Token>,
     n_par: u32
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(s:&'a str) -> Lexer {
+    pub fn new(v:&'a Vec<char>) -> Lexer {
         Lexer {
-            xs: s,
+            xs: v,
             n_par: 0,
             tokens: vec!()
         }
@@ -43,9 +43,11 @@ impl<'a> Lexer<'a> {
     
     pub fn read_single_token (&mut self) {
         if !self.xs.is_empty() {
-            let c = self.xs.chars().nth(0).unwrap();
+            let c = self.xs[0];
             if c.is_whitespace() {
+                info!("pan");
                 self.xs = &self.xs[1..];
+                info!("pan");
                 self.read_single_token();
             } else {
                 match c {
@@ -61,7 +63,7 @@ impl<'a> Lexer<'a> {
                             self.xs = &self.xs[1..];
                         } else {
                             error!("Mismatched parenthesis: too many )s");
-                            self.xs = "";
+                            self.xs = &[];
                         }
                     },
                     '\\' => {
@@ -114,7 +116,7 @@ impl<'a> Lexer<'a> {
                 Ok(x) => self.tokens.push(Token::Integer(x)),
                 Err(_) => {
                     error!("Error parsing 'integer': {}", s.clone());
-                    self.xs = "";
+                    self.xs = &[];
                 }
             }
         } else { // float
@@ -122,7 +124,7 @@ impl<'a> Lexer<'a> {
                 Ok(x) => self.tokens.push(Token::Float(x)),
                 Err(_) => {
                     error!("Error parsing 'float': {}", s.clone());
-                    self.xs = "";
+                    self.xs = &[];
                 }
             }
         }
@@ -134,7 +136,7 @@ impl<'a> Lexer<'a> {
             return;
         } 
         
-        let c = self.xs.chars().nth(0).unwrap();
+        let c = self.xs[0];
         if c.is_whitespace() {
             self.xs = &self.xs[1..];
             self.finish_number(s, n_dot);
@@ -154,13 +156,13 @@ impl<'a> Lexer<'a> {
                     self.read_number(s,1);
                 } else {
                     error!("Lexer: Invalid number: contains more than one dot");
-                    self.xs = "";
+                    self.xs = &[];
                 }
             },
             '('|')'|';' => self.finish_number(s,n_dot),
             _ => {
                 error!("Lexer: Invalid character in a number: {}", c);
-                self.xs = "";
+                self.xs = &[];
             }
         }
     }
@@ -169,7 +171,7 @@ impl<'a> Lexer<'a> {
         if self.xs.len() == 0 {
                 error!("Lexer error: can't find closing quote");
         } else {
-            let c = self.xs.chars().nth(0).unwrap();
+            let c = self.xs[0];
             match c {
                 '"' => {
                     self.tokens.push(Token::String(s.clone()));
@@ -179,7 +181,7 @@ impl<'a> Lexer<'a> {
                     if self.xs.len() == 1 {
                         error!("Lexer error: can't finish lexing string");
                     } else {
-                        let c2 = self.xs.chars().nth(1).unwrap();
+                        let c2 = self.xs[1];
                         self.xs = &self.xs[2..];
                         match c2 {
                             '\\' => {
@@ -192,7 +194,7 @@ impl<'a> Lexer<'a> {
                             }
                             _ => {
                                 error!("Unrecognized escape character \\{}", c2);
-                                self.xs = "";
+                                self.xs = &[];
                             }
                         }
                     }
@@ -210,7 +212,7 @@ impl<'a> Lexer<'a> {
         if self.xs.len() == 0 {
             return;
         }
-        let c = self.xs.chars().nth(0).unwrap();
+        let c = self.xs[0];
         if c == '\n' {
             return;
         } else {
@@ -226,7 +228,7 @@ impl<'a> Lexer<'a> {
             self.tokens.push(Token::Ident(s.clone()));
             return;
         } 
-        let c = self.xs.chars().nth(0).unwrap();
+        let c = self.xs[0];
         if c.is_whitespace() {
             self.xs = &self.xs[1..];
             self.tokens.push(Token::Ident(s.clone()));
