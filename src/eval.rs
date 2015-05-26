@@ -34,7 +34,9 @@ const RESERVED_IDENTS:&'static[&'static str] = &[
     "_quote?",
     "_unquote?",
     "_quasiquote?",
-    "_list?"];
+    "_list?",
+        "_str",
+    "_print"];
 
 fn is_reserved_ident (s: &str) -> bool {
     for i in RESERVED_IDENTS {
@@ -243,7 +245,32 @@ impl Context {
             }
             c
         }
-    } 
+    }
+
+    // Display the value of the expression
+    fn eval_print(&self, e:Rc<Expr>) -> Context {
+        let c = self.pre_eval_1(e);
+        match *c.expr {
+            Expr::String(ref s) => print!("{}", s),
+            _ => print!("{}", *c.expr)
+        }
+        self.set_expr(Expr::Nil)
+    }
+    
+    // Concatenate two values, as a sring
+    fn eval_str(&self, e:Rc<Expr>) -> Context {
+        let (r1,r2,_) = self.pre_eval_2(e);
+        let s1 = match *r1 {
+            Expr::String(ref s) => format!("{}", s),
+            _ => format!("{}", r1)
+        };
+        let s2 = match *r2 {
+            Expr::String(ref s) => format!("{}", s),
+            _ => format!("{}", r2)
+        };
+        let s = format!("{}{}",s1, s2);
+        self.set_expr(Expr::String(s.to_string()))
+    }
 
     fn eval_plus(&self, e:Rc<Expr>) -> Context {
         let (r1,r2,c) = self.pre_eval_2(e);
@@ -754,7 +781,7 @@ impl Context {
             c = c.dup_env();
         }
         merge_envs(&mut c.env.borrow_mut(), env);
-        
+ 
         let mut c = c.eval_fn_args (args_name, args, false, self);
         if c.has_error() {
             self.error()
@@ -828,6 +855,8 @@ impl Context {
             "_=" => self.eval_equal(e2),
             "_<" => self.eval_lt(e2),
             "_>" => self.eval_gt(e2),
+            "_str" => self.eval_str(e2),
+            "_print" => self.eval_print(e2),
             "_nil?" | "_lambda?" | "_integer?" | "_macro?" | "_float?" 
                 | "_ident?" | "_string?" | "_list?" | "_quote?"
                 | "_unquote?" | "_quasiquote?" => self.eval_type_check(ident.as_ref(),e2),

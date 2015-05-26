@@ -191,11 +191,15 @@ impl<'a> Lexer<'a> {
                             '\\' => {
                                 s.push('\\');
                                 self.read_string(s);
-                            }
+                            },
                             '"' => {
                                 s.push('"');
                                 self.read_string(s);
-                            }
+                            },
+                            'n' => {
+                                s.push('\n');
+                                self.read_string(s);
+                            },
                             _ => {
                                 error!("Unrecognized escape character \\{}", c2);
                                 self.xs = &[];
