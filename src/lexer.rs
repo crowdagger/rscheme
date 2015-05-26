@@ -2,7 +2,7 @@ use std::result;
 
 pub type Result = result::Result<Token, &'static str>;
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub enum Token {
     Integer (i64),
     Float (f64),
@@ -17,23 +17,29 @@ pub enum Token {
 
 pub struct Lexer<'a> {
     xs: &'a [char],
-    pub tokens: Vec<Token>,
-    n_par: u32
+    pub tokens: &'a mut Vec<Token>,
+    pub n_par: u32
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(v:&'a Vec<char>) -> Lexer {
+    pub fn new(v:&'a Vec<char>, t:&'a mut Vec<Token>) -> Lexer<'a> {
         Lexer {
             xs: v,
             n_par: 0,
-            tokens: vec!()
+            tokens: t,
         }
     }
-    
-    pub fn tokenize(&'a mut self) -> &'a [Token] {
+
+    pub fn with_n_par(&mut self, n_par: u32) {
+        self.n_par = n_par;
+    }
+
+    // Return the number of par (0 if balanced)
+    // and fill the tokens vector
+    pub fn tokenize(&'a mut self) -> u32 {
         loop {
             if self.xs.len() == 0 {
-                return &self.tokens;
+                return self.n_par;
             }
             else {
                 self.read_single_token();

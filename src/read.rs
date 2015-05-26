@@ -92,9 +92,12 @@ pub fn read(xs: &[Token])-> Vec<Rc<Expr>> {
 
 pub fn read_str(s:&str) -> Vec<Rc<Expr>> {
     let vchars:Vec<char> = s.chars().collect();
-    let mut l = Lexer::new(&vchars);
-    let v:&[Token] = l.tokenize();
-    read(v)
+    let mut v:Vec<Token> = vec!();
+    {
+        let mut l = Lexer::new(&vchars,&mut v);
+        l.tokenize();
+    }
+    read(&v)
 }
 
 pub fn read_file(s:&str) -> Vec<Rc<Expr>> {
