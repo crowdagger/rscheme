@@ -24,9 +24,34 @@
   (_= x y))
 
 (defn nil? (xs)
-  (if (= () xs)
-      't
-      ()))
+  (_nil? xs))
+
+(defn list? (xs)
+  (_list? xs))
+
+(defn lambda? (xs)
+  (_lambda? xs))
+
+(defn integer? (xs)
+  (_integer? xs))
+
+(defn float? (xs)
+  (_float? xs))
+
+(defn ident? (xs)
+  (_ident? xs))
+
+(defn string? (xs)
+  (_string? xs))
+
+(defn quote? (xs)
+  (_quote? xs))
+
+(defn quasiquote? (xs)
+  (_quasiquote? xs))
+
+(defn unquote? (xs)
+  (_unquote? xs))
 
 (defn + (x & args)
   (if (nil? args)

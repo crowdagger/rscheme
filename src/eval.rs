@@ -22,7 +22,19 @@ const RESERVED_IDENTS:&'static[&'static str] = &[
     "_<",
     "_>",
     "_car",
-    "_cdr"];
+    "_cdr",
+    "_&",
+    "_nil?",
+    "_lambda?",
+    "_macro?",
+    "_integer?",
+    "_float?",
+    "_ident?",
+    "_string?",
+    "_quote?",
+    "_unquote?",
+    "_quasiquote?",
+    "_list?"];
 
 fn is_reserved_ident (s: &str) -> bool {
     for i in RESERVED_IDENTS {
@@ -775,6 +787,30 @@ impl Context {
         }
     }
 
+    // Checks the types of an expression
+    fn eval_type_check(&self, t:&str, e:Rc<Expr>) -> Context {
+        let c = self.pre_eval_1(e);
+        let e = c.expr.clone();
+        let is_ok =  match t {
+            "_nil?" => if let Expr::Nil = *e {true} else {false},
+            "_list?" => if let Expr::Cons(_,_) = *e {true} else {false},
+            "_lambda?" => if let Expr::Lambda(_,_,_,_) = *e {true} else {false},
+            "_integer?" => if let Expr::Integer(_) = *e {true} else {false},
+            "_float?" => if let Expr::Float(_) = *e {true} else {false},
+            "_ident?" => if let Expr::Ident(_) = *e {true} else {false},
+            "_string?" => if let Expr::String(_) = *e {true} else {false},
+            "_quote?" => if let Expr::Quote(_) = *e {true} else {false},
+            "_quasiquote?" => if let Expr::Quasiquote(_) = *e {true} else {false},
+            "_unquote" => if let Expr::Unquote(_) = *e {true} else {false},
+            _ => panic!("Unrecognized type")
+        };
+        if is_ok {
+            self.set_expr(Expr::Ident("t".to_string()))
+        } else {
+            self.set_expr(Expr::Nil)
+        }
+    }
+
     fn eval_print_debug(&self, e:Rc<Expr>) -> Context {
         let c = self.pre_eval_1(e);
         println!("{:?}", c.expr.clone());
@@ -792,6 +828,9 @@ impl Context {
             "_=" => self.eval_equal(e2),
             "_<" => self.eval_lt(e2),
             "_>" => self.eval_gt(e2),
+            "_nil?" | "_lambda?" | "_integer?" | "_macro?" | "_float?" 
+                | "_ident?" | "_string?" | "_list?" | "_quote?"
+                | "_unquote?" | "_quasiquote?" => self.eval_type_check(ident.as_ref(),e2),
             "def" => self.eval_def(e2),
             "_car" => self.eval_car(e2),
             "_cdr" => self.eval_cdr(e2),
