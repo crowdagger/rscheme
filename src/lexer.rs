@@ -51,9 +51,7 @@ impl<'a> Lexer<'a> {
         if !self.xs.is_empty() {
             let c = self.xs[0];
             if c.is_whitespace() {
-                info!("pan");
                 self.xs = &self.xs[1..];
-                info!("pan");
                 self.read_single_token();
             } else {
                 match c {

@@ -2,6 +2,9 @@
   `(def ,name   (lambda ,name ,args
                         ,body)))
 
+
+
+
 (defn car (xs)
   (_car xs))
 
@@ -105,3 +108,13 @@
       1
       (+ (fibo (- fibox 1)) (fibo (- fibox 2)))))
 
+(defn g (x & args)
+  (cdr args))
+
+(defn apply (f args)
+  (eval (cons f args)))
+
+(defn f (x & args)
+  (if (= 1 (count args))
+      (+ x (car args))
+      (+ x (apply f args))))

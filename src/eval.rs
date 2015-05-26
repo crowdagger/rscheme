@@ -638,6 +638,25 @@ impl Context {
     }
 
 
+    // Eval all elements in a list, returning the list of all eval'ed elements
+    fn eval_all_in_list(&self, expr:Rc<Expr>) -> Context
+    {
+        match *expr {
+            Expr::Nil => self.set_expr(Expr::Nil),
+            Expr::Cons(ref e, ref r) => {
+                let mut c = self.clone();
+                c.expr = e.clone();
+                c = c.eval();
+                let evaled_car = c.expr;
+                c = self.eval_all_in_list(r.clone());
+                let evaled_cdr = c.expr;
+                self.set_expr(Expr::Cons(evaled_car, evaled_cdr))
+            },
+            _ => self.error_str("Wrong list for eval_all_in_list")
+        }
+    }
+    
+
     /// Check args of a function or macro call, make them correspond and add them to environment    
     fn eval_fn_args (&self,
                      args_name:Rc<Expr>,
@@ -653,13 +672,41 @@ impl Context {
                 Expr::Cons(ref a2, ref r2) => {
                     match **a1 {
                         Expr::Ident(ref s) => { // it matches, so we do our stuff
-                            let mut c = old_c.clone();
-                            c.expr = a2.clone();
-                            c = if is_macro {c} else {c.eval()}; //WRONG ENV TO EVAL THIS
-                            let v = c.expr.clone();
-                            info!("evalued {} to {:?}", s, v);
-                            c = self.add_env(s.clone(), v);
-                            c.eval_fn_args(r1.clone(),r2.clone(), is_macro, old_c)
+                            if *s == "&"{ //special case for variadic functions
+                                match **r1 {
+                                    Expr::Cons(ref catchall, ref r1_bis) =>
+                                        match **r1_bis {
+                                            Expr::Nil => {
+                                                match **catchall {
+                                                    Expr::Ident(ref s) => {
+                                                        let v = if !is_macro {
+                                                            let c = self.eval_all_in_list(args.clone());
+                                                            c.expr
+                                                        } else {
+                                                            args.clone()
+                                                        };
+                                                        info!("args: {:?}", args);
+                                                        info!("evalued {} to {:?}", s, v);
+                                                        self.add_env(s.clone(), v)
+                                                    },
+                                                    _ => self.error_str("Catch all is not an ident")
+                                                }
+                                            },
+                                            _ => {
+                                                self.error_str("Catch all argument must be the last of the list")
+                                            }
+                                        },
+                                    _ => self.error_str("Error in use of special form .")
+                                }
+                            } else {
+                                let mut c = old_c.clone();
+                                c.expr = a2.clone();
+                                c = if is_macro {c} else {c.eval()}; //WRONG ENV TO EVAL THIS ?
+                                let v = c.expr.clone();
+                                info!("evalued {} to {:?}", s, v);
+                                c = self.add_env(s.clone(), v);
+                                c.eval_fn_args(r1.clone(),r2.clone(), is_macro, old_c)
+                            }
                         },
                         _ => self.error_str("Argument name is not an ident!")
                     }
