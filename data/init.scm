@@ -17,11 +17,21 @@
 (defn cons (x xs)
   (_cons x xs))
 
+(defn apply (f args)
+  (eval (cons f args)))
+
 (defn = (x y)
   (_= x y))
 
-(defn + (x y)
-  (_+ x y))
+(defn nil? (xs)
+  (if (= () xs)
+      't
+      ()))
+
+(defn + (x & args)
+  (if (nil? args)
+      x
+      (_+ x (apply + args))))
 
 (defn - (x y)
   (_- x y))
@@ -56,10 +66,7 @@
   (or (> x y)
       (= x y)))
 
-(defn nil? (xs)
-  (if (= () xs)
-      't
-      ()))
+
 
 (defn count (xs)
   (if (nil? xs)
@@ -111,10 +118,9 @@
 (defn g (x & args)
   (cdr args))
 
-(defn apply (f args)
-  (eval (cons f args)))
+
 
 (defn f (x & args)
-  (if (= 1 (count args))
-      (+ x (car args))
+  (if (= 0 (count args))
+      x
       (+ x (apply f args))))

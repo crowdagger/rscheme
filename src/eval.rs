@@ -666,39 +666,36 @@ impl Context {
         match *args_name {
             Expr::Nil => match *args {
                 Expr::Nil => self.clone(), // no args in both cases
-                _ => self.error_str("Error in function call: number of arguments don't match")
+                _ => self.error_str("1Error in function call: number of arguments don't match")
             },
-            Expr::Cons(ref a1, ref r1) => match *args {
-                Expr::Cons(ref a2, ref r2) => {
-                    match **a1 {
-                        Expr::Ident(ref s) => { // it matches, so we do our stuff
-                            if *s == "&"{ //special case for variadic functions
-                                match **r1 {
-                                    Expr::Cons(ref catchall, ref r1_bis) =>
-                                        match **r1_bis {
-                                            Expr::Nil => {
-                                                match **catchall {
-                                                    Expr::Ident(ref s) => {
-                                                        let v = if !is_macro {
-                                                            let c = self.eval_all_in_list(args.clone());
-                                                            c.expr
-                                                        } else {
-                                                            args.clone()
-                                                        };
-                                                        info!("args: {:?}", args);
-                                                        info!("evalued {} to {:?}", s, v);
-                                                        self.add_env(s.clone(), v)
-                                                    },
-                                                    _ => self.error_str("Catch all is not an ident")
-                                                }
-                                            },
-                                            _ => {
-                                                self.error_str("Catch all argument must be the last of the list")
-                                            }
-                                        },
-                                    _ => self.error_str("Error in use of special form .")
-                                }
-                            } else {
+            Expr::Cons(ref a1, ref r1) => {
+                info!("{:?}", a1);
+                if let Expr::Ident(ref s) = **a1 {
+                    if s == "&" { // case for catchall argument name
+                        if let Expr::Cons(ref catchall, ref r1_bis) = **r1 {
+                                    match **r1_bis {
+                                        Expr::Nil => {
+                                            match **catchall {
+                                                Expr::Ident(ref s) => { 
+                                                    let v = if !is_macro {
+                                                        let c = self.eval_all_in_list(args.clone());
+                                                        c.expr
+                                                    } else {
+                                                        args.clone()
+                                                    };
+                                                    info!("args: {:?}", args);
+                                                    info!("evalued {} to {:?}", s, v);
+                                                    return self.add_env(s.clone(), v);
+                                                },
+                                                _ => return self.error_str("Catch all is not an ident")
+                                            }},
+                                        _ => {
+                                            return self.error_str("Catch all argument must be the last of the list")
+                                        }}}}}
+                match *args{
+                    Expr::Cons(ref a2, ref r2) => {
+                        match **a1 {
+                            Expr::Ident(ref s) => {
                                 let mut c = old_c.clone();
                                 c.expr = a2.clone();
                                 c = if is_macro {c} else {c.eval()}; //WRONG ENV TO EVAL THIS ?
@@ -706,13 +703,11 @@ impl Context {
                                 info!("evalued {} to {:?}", s, v);
                                 c = self.add_env(s.clone(), v);
                                 c.eval_fn_args(r1.clone(),r2.clone(), is_macro, old_c)
-                            }
-                        },
-                        _ => self.error_str("Argument name is not an ident!")
-                    }
-                },
-                _ => self.error_str("Error in function call: number of arguments don't match")
-            },
+                            },
+                            _ => self.error_str("Argument name is not an ident!")                            
+                        }},
+                    _ => self.error_str("2Error in function call: number of arguments don't match")
+                    }},
             _ => self.error_str("Fn arg names must be a list!")
         }
     }
