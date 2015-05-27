@@ -176,6 +176,7 @@
       1
       (+ (fibo (- fibox 1)) (fibo (- fibox 2)))))
 
-(defn g (x & args)
-  (cdr args))
-
+(define (f x1 x2 & xs)
+        (println x1)
+        (println x2)
+        (println xs))
