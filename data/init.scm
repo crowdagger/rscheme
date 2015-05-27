@@ -1,7 +1,7 @@
+;; a short form for defining functions
 (defmacro defn (name args body)
   `(def ,name   (lambda ,name ,args
                         ,body)))
-
 
 
 
@@ -76,6 +76,35 @@
 (defn > (x y)
   (_> x y))
 
+(defn count (xs)
+  (if (nil? xs)
+      0
+      (+ 1 (count (cdr xs)))))
+
+(defmacro cond (preds)
+  `(if ,(car (car preds))
+       ,(cadr (car preds))
+       ,(if (nil? (cdr preds))
+            ()
+            `(cond ,(cdr preds)))))
+
+(defn do (& args)
+  (cond (((nil? args) ())
+         ((= 1 (count args)) (car args))
+         ('else (apply do (cdr args))))))
+
+(defmacro define (name expr & exprs)
+  `(def ,(if (list? name)
+             (car name)
+             name)
+        ,(if (list? name)
+             `(lambda ,(car name) ,(cdr name)
+                      ,(if (nil? exprs)
+                           expr
+                           (cons do
+                                 (cons expr exprs))))
+             expr)))
+
 (defmacro or (p1 p2)
   `(if ,p1
        't
@@ -94,13 +123,6 @@
   (or (> x y)
       (= x y)))
 
-
-
-(defn count (xs)
-  (if (nil? xs)
-      0
-      (+ 1 (count (cdr xs)))))
-
 (defn map (f xs)
   (if (nil? xs)
       ()
@@ -115,21 +137,11 @@
            ,body)
         (map cadr args)))
 
-(defmacro cond (preds)
-  `(if ,(car (car preds))
-       ,(cadr (car preds))
-       ,(if (nil? (cdr preds))
-            ()
-            `(cond ,(cdr preds)))))
-
 (defn str (s & args)
   (cond (((nil? args) s)
          ((= 1 (count args)) (_str s (car args)))
          ('else 
          (_str s (apply str args))))))
-
-;(defn println (& args)
-                                        ;  (_print (str (apply str args) "\n")))
 
 (defn println (s & args)
   (cond (((nil? args) (_print (str s "\n")))
@@ -138,45 +150,6 @@
                                      (cons (str (car args) " " (cadr args))
                                            (cddr args))))))))
   
-(defn do (& args)
-  (cond (((nil? args) ())
-         ((= 1 (count args)) (car args))
-         ('else (apply do (cdr args))))))
 
-(defmacro define (name expr & exprs)
-  `(def ,(if (list? name)
-             (car name)
-             name)
-        ,(if (list? name)
-             `(lambda ,(car name) ,(cdr name)
-                      ,(if (nil? exprs)
-                           expr
-                           (cons do
-                                 (cons expr exprs))))
-             expr)))
+
   
-
-
-;; test functions
-;; should be declared in separate file
-
-(defn compare (x y)
-  (cond (((< x y) "less than")
-         ((> x y) "greater than")
-         ('else "must be equal"))))
-
-(defn factorial (x)
-  (if (<= x 1)
-      1
-      (* x (factorial (- x 1)))))
-
-
-(defn fibo (fibox)
-  (if (< fibox 2)
-      1
-      (+ (fibo (- fibox 1)) (fibo (- fibox 2)))))
-
-(define (f x1 x2 & xs)
-        (println x1)
-        (println x2)
-        (println xs))

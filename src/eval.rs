@@ -562,8 +562,24 @@ impl Context {
                                 self.collect_idents(e2, ids, ignore, quote);
                             }
                         } else {
-                            self.collect_idents(e1, ids, ignore, quote);
-                            self.collect_idents(e2, ids, ignore, quote);
+                            // if it's a macro we must not collect idents either(because it can declare variables and all)
+                            let is_macro = if quote {
+                                false
+                            } else {
+                                let env = self.global_env.borrow();
+                                let r = env.get(s);
+                                match r {
+                                    None => false,
+                                    Some(ref e) => match ***e {
+                                        Expr::Macro(_,_) => true,
+                                        _ => false
+                                    }
+                                }
+                            };
+                            if !is_macro {
+                                self.collect_idents(e1, ids, ignore, quote);
+                                self.collect_idents(e2, ids, ignore, quote);
+                            }
                         }
                     },
                     _ => {
