@@ -5,7 +5,7 @@ A toy scheme interpreter written in Rust.
 Dependencies
 ------------
 You'll need the Rust compiler and
-Cargo. See there : {http://www.rust-lang.org/install.html.
+Cargo. [See there](http://www.rust-lang.org/install.html).
 
 Usage
 -----
