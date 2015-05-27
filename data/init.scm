@@ -14,6 +14,9 @@
 (defn cadr (xs)
   (car (cdr xs)))
 
+(defn cddr (xs)
+  (cdr (cdr xs)))
+
 (defn cons (x xs)
   (_cons x xs))
 
@@ -111,11 +114,6 @@
   (cons `(lambda ,(map car args)
            ,body)
         (map cadr args)))
-    
-(defn factorial (x)
-  (if (= x 0)
-      1
-      (* x (factorial (- x 1)))))
 
 (defmacro cond (preds)
   `(if ,(car (car preds))
@@ -123,6 +121,32 @@
        ,(if (nil? (cdr preds))
             ()
             `(cond ,(cdr preds)))))
+
+(defn str (s & args)
+  (cond (((nil? args) s)
+         ((= 1 (count args)) (_str s (car args)))
+         ('else 
+         (_str s (apply str args))))))
+
+;(defn println (& args)
+                                        ;  (_print (str (apply str args) "\n")))
+
+(defn println (s & args)
+  (cond (((nil? args) (_print (str s "\n")))
+         ((= 1 (count args)) (_print (str s " " (car args) "\n")))
+         ('else (apply println (cons s
+                                     (cons (str (car args) " " (cadr args))
+                                           (cddr args))))))))
+  
+(defn do (& args)
+  (cond (((nil? args) ())
+         ((= 1 (count args)) (car args))
+         ('else (apply do (cdr args))))))
+  
+
+
+;; test functions
+;; should be declared in separate file
 
 (defn compare (x y)
   (cond (((< x y) "less than")
@@ -143,9 +167,3 @@
 (defn g (x & args)
   (cdr args))
 
-
-
-(defn f (x & args)
-  (if (= 0 (count args))
-      x
-      (+ x (apply f args))))
