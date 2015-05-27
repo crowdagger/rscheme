@@ -118,7 +118,16 @@ There is not yet support of input.
 Not implemented (yet?)
 ----------------------
 
-* input/output
+* input
 * including another file
 
-Well, it's only a toy project, to learn Rust, right ? You want some real Scheme/Lisp interpreter, there's plenty to find.
+Well, it's only a toy project, to learn Rust, right ? You want some
+real Scheme/Lisp interpreter, there's plenty to find :)
+
+License
+--------
+GNU General Public License, 2 or later. [See license.](LICENSE)
+
+ChangeLog
+---------
+Current version is 1.0.0. [See ChangeLog.](ChangeLog.md)
