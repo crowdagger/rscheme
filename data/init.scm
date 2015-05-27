@@ -142,6 +142,18 @@
   (cond (((nil? args) ())
          ((= 1 (count args)) (car args))
          ('else (apply do (cdr args))))))
+
+(defmacro define (name expr & exprs)
+  `(def ,(if (list? name)
+             (car name)
+             name)
+        ,(if (list? name)
+             `(lambda ,(car name) ,(cdr name)
+                      ,(if (nil? exprs)
+                           expr
+                           (cons do
+                                 (cons expr exprs))))
+             expr)))
   
 
 
